@@ -133,7 +133,7 @@ export const updateTool = asyncHandler(async (req, res, next) => {
   Object.keys(updateFields).forEach((key) => {
     tool[key] = updateFields[key];
   });
- tool.isUpdated=true
+  tool.isUpdated = true;
   await tool.save();
 
   res.status(200).json({
