@@ -226,19 +226,22 @@ export const getToolById = asyncHandler(async (req, res) => {
 });
 
 export const ExaminationDate = asyncHandler(async (req, res, next) => {
-  const { owner } = req.owner._id;
-  const { toolId } = req.params;
-  const date = req.body;
+  const ownerId = req.owner._id; // assuming req.owner holds the authenticated owner
+  const { id: toolId } = req.params; // renamed id to match your route definition
+  const { Examination_date: date } = req.body; // use the body field `Examination_date`
+
   const tool = await toolModel.findById(toolId);
   if (!tool) {
-    return next(new Error("Tool not found !", { status: 404 }));
+    return next(new Error("Tool not found!", { status: 404 }));
   }
-  tool.Examination_date=date
-  await toolModel.save()
+
+  tool.Examination_date = date; // assign the date to the tool document
+
+  await tool.save(); // Save the document (not the model)
 
   res.status(200).json({
     success: true,
     status: 200,
-    message: "Examination date sent success",
+    message: "Examination date sent successfully",
   });
 });
