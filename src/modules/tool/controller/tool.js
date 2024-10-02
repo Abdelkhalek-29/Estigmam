@@ -227,29 +227,29 @@ export const getToolById = asyncHandler(async (req, res) => {
 });
 
 export const ExaminationDate = asyncHandler(async (req, res, next) => {
-  const ownerId = req.owner._id; // Assuming req.owner holds the authenticated owner
-  const { id: toolId } = req.params; // Getting toolId from the params
-  const { Examination_date: date } = req.body; // Destructuring the Examination_date from request body
+  const ownerId = req.owner._id; 
+  const { Examination_date: date } = req.body; 
 
-  const tool = await toolModel.findById(toolId); // Find the tool by toolId
-  if (!tool) {
-    return next(new Error("Tool not found!", { status: 404 })); // Error if tool is not found
+  const tools = await toolModel.find({ createBy: ownerId });
+
+  if (!tools || tools.length === 0) {
+    return next(new Error("No tools found for this owner!", { status: 404 }));
   }
 
-  // Update the tool's Examination_date
-  tool.Examination_date = date;
-  await tool.save(); // Save the updated tool document
+  for (let tool of tools) {
+    tool.Examination_date = date;
+    await tool.save(); 
+  }
 
-  // Update the owner's isDate field to true
-  const owner = await OwnerModel.findById(ownerId); // Find the owner by ownerId
+  const owner = await OwnerModel.findById(ownerId);
   if (owner) {
-    owner.isDate = true; // Set isDate to true
-    await owner.save(); // Save the updated owner document
+    owner.isDate = true; 
+    await owner.save(); 
   }
 
   res.status(200).json({
     success: true,
     status: 200,
-    message: "Examination date updated successfully, isDate set to true",
+    message: "Examination dates updated successfully for all tools, isDate set to true",
   });
 });

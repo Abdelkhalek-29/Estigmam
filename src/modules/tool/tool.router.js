@@ -54,7 +54,7 @@ router.get(
   toolController.getToolById
 );
 router.patch(
-  "/ExaminationDate/:id",
+  "/ExaminationDate",
   auth,
   isAuthorized("owner"),
   toolController.ExaminationDate
