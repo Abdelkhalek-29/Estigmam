@@ -3,6 +3,7 @@ import cloudinary from "../../../utils/cloudinary.js";
 import toolModel from "../../../../DB/model/tool.model.js";
 import typesOfPlacesModel from "../../../../DB/model/typesOfPlaces.model.js";
 import activityModel from "../../../../DB/model/activity.model.js";
+import OwnerModel from "../../../../DB/model/Owner.model .js";
 
 export const addTool = asyncHandler(async (req, res, next) => {
   const { name, type, location, portName, details, activityId } = req.body;
@@ -226,22 +227,29 @@ export const getToolById = asyncHandler(async (req, res) => {
 });
 
 export const ExaminationDate = asyncHandler(async (req, res, next) => {
-  const ownerId = req.owner._id; // assuming req.owner holds the authenticated owner
-  const { id: toolId } = req.params; // renamed id to match your route definition
-  const { Examination_date: date } = req.body; // use the body field `Examination_date`
+  const ownerId = req.owner._id; // Assuming req.owner holds the authenticated owner
+  const { id: toolId } = req.params; // Getting toolId from the params
+  const { Examination_date: date } = req.body; // Destructuring the Examination_date from request body
 
-  const tool = await toolModel.findById(toolId);
+  const tool = await toolModel.findById(toolId); // Find the tool by toolId
   if (!tool) {
-    return next(new Error("Tool not found!", { status: 404 }));
+    return next(new Error("Tool not found!", { status: 404 })); // Error if tool is not found
   }
 
-  tool.Examination_date = date; // assign the date to the tool document
+  // Update the tool's Examination_date
+  tool.Examination_date = date;
+  await tool.save(); // Save the updated tool document
 
-  await tool.save(); // Save the document (not the model)
+  // Update the owner's isDate field to true
+  const owner = await OwnerModel.findById(ownerId); // Find the owner by ownerId
+  if (owner) {
+    owner.isDate = true; // Set isDate to true
+    await owner.save(); // Save the updated owner document
+  }
 
   res.status(200).json({
     success: true,
     status: 200,
-    message: "Examination date sent successfully",
+    message: "Examination date updated successfully, isDate set to true",
   });
 });

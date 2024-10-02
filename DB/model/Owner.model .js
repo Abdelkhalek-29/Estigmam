@@ -110,6 +110,10 @@ const OwnerSchema = new Schema(
     isUpdated:{
       type:Boolean,
       default:false
+    },
+    isDate:{
+      type:Boolean,
+      default:false
     }
   },
   
