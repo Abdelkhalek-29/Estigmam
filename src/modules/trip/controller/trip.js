@@ -401,23 +401,6 @@ export const deleteTrip = asyncHandler(async (req, res, next) => {
       : "trip canceled successfully!",
   });
 });
-// export const category = asyncHandler(async (req, res, next) => {
-//   const category = await categoryModel.findById(req.params.categoryId);
-//   if (!category) return next(new Error("category not found", { cause: 404 }));
-//   const trip = await tripModel.find({
-//     category: req.params.categoryId,
-//   });
-//   return res.status(200).json({ success: rue, trip });
-// });
-// export const subCategory = asyncHandler(async (req, res, next) => {
-//   const subCategory = await subCategoryModel.findById(req.params.subCategory);
-//   if (!subCategory)
-//     return next(new Error("subCategory not found", { cause: 404 }));
-//   const trip = await tripModel.find({
-//     subCategory: req.params.subCategory,
-//   });
-//   return res.status(200).json({ success: true, trip });
-// });
 
 export const getallTrip = asyncHandler(async (req, res, next) => {
   const language = req.query.lang || req.headers["accept-language"] || "en";
@@ -1261,9 +1244,6 @@ export const getUpcomingTripsByBerth = asyncHandler(async (req, res) => {
         latitude: newLatitude,
         longitude: newLongitude,
       };
-
-      console.log('Generated Random Location for Trip ID:', trip._id, 'Location:', location); // Log generated random location
-
       return {
         _id: trip._id,
         typeOfPlace: trip.typeOfPlace ? trip.typeOfPlace[`name_${acceptedLanguage}`] : null,

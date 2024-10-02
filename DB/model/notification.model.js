@@ -10,36 +10,39 @@ const notificationSchema = new Schema(
       type: String,
       required: true,
     },
-    status: {
-      type: String,
-    },
     sender: {
-      type:Types.ObjectId,
-      ref:"User"
+      type: Types.ObjectId,
+      refPath: 'senderModel',
+      required: true
     },
-    receiver:{
-      type:Types.ObjectId,
-      ref:"User"
+    senderModel: {
+      type: String,
+      required: true,
+      enum: ['User', 'Owner', 'TripLeader'], 
+    },
+    receiver: {
+      type: Types.ObjectId,
+      refPath: 'receiverModel',
+      required: true,
+    },
+    receiverModel: {
+      type: String,
+      required: true,
+      enum: ['User', 'Owner', 'TripLeader'], 
     },
     tripId: {
       type: Types.ObjectId,
       ref: "Trip",
     },
-    toolId:{
+    toolId: {
       type: Types.ObjectId,
-      ref:"Tool",
+      ref: "Tool",
     },
-   /* approve: {
+    isRead: {
       type: Boolean,
       default: false,
     },
-    ownerId: {
-      type: Types.ObjectId,
-      ref: "Owner",
-    },*/
-    isRead:{type:Boolean,default:false}
   },
-
   { timestamps: true }
 );
 const notificationModel =

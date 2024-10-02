@@ -6,10 +6,19 @@ import toolModel from "../../../../DB/model/tool.model.js";
 export const createNotification = asyncHandler(async (req, res, next) => {
   const { description, receiver, tripId, toolId } = req.body;
 
+  // Determine the sender from the authenticated user (owner, trip leader, or user)
+  let sender = req.owner ? req.owner._id : req.tripLeader ? req.tripLeader._id : req.user._id;
+  let senderModel = req.owner ? "Owner" : req.tripLeader ? "TripLeader" : "User";
+
+  // Ensure receiverModel is set to match the receiver's role
+  let receiverModel = "User";  // Default to 'User', but adjust based on your logic (e.g., if the receiver can be an owner or trip leader)
+
   let notificationData = {
     description,
     receiver,
-    sender: req.owner._id,
+    sender,
+    senderModel,
+    receiverModel, // Include the model of the receiver (adjust based on your logic)
   };
 
   if (tripId) {
@@ -24,14 +33,14 @@ export const createNotification = asyncHandler(async (req, res, next) => {
       title: trip.tripTitle,
     };
   } else if (toolId) {
-    const tool = await toolModel.findById(toolId); 
+    const tool = await toolModel.findById(toolId);
     if (!tool) {
       return res.status(404).json({ message: "Tool not found" });
     }
     notificationData = {
       ...notificationData,
       toolId,
-      title: tool.name, 
+      title: tool.name,
     };
   } else {
     return res.status(400).json({ message: "Either tripId or toolId must be provided" });
@@ -47,12 +56,18 @@ export const createNotification = asyncHandler(async (req, res, next) => {
 
 
 export const getNotifications = asyncHandler(async (req, res, next) => {
-  const { userId } = req.user._id;
+  // Depending on the role (user, owner, trip leader), the authenticated entity will be set in the request object by the auth middleware
+  const { _id: userId, role } = req.user || req.owner || req.tripLeader;
 
-  const notification = await notificationModel.find(userId);
+  // Fetch notifications based on the user's role and ID
+  const notifications = await notificationModel.find({
+    receiver: userId, // The receiver of the notification
+  });
+
+  // Return the fetched notifications
   res.status(200).json({
     success: true,
-    notification,
+    notifications,
   });
 });
 
