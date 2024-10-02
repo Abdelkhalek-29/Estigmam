@@ -169,7 +169,8 @@ export const register = asyncHandler(async (req, res, next) => {
       role: user.role,
       isUpdated: user.isUpdated,
       profileImage: user.profileImage,
-      isDate:user.isDate
+      isDate:user.isDate,
+      id:user._id
     },
   });
 });
@@ -234,7 +235,9 @@ export const login = asyncHandler(async (req, res, next) => {
       role: user.role,
       isUpdated: user.isUpdated,
       profileImage: user.profileImage,
-      isDate:user.isDate
+      isDate:user.isDate,
+      id:user._id
+
     },
   });
 });
