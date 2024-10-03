@@ -209,12 +209,19 @@ export const start = asyncHandler(async (req, res, next) => {
     return next(new Error("Trip not found", { status: 404 }));
   }
 
+  if (trip.status !== "upComing") {
+    return res.status(400).json({
+      success: false,
+      message: "You can't satart this trip !",
+    });
+  }
+
   trip.status = "current";
-  await trip.save();
+  await trip.save(); 
 
   res.status(200).json({
     success: true,
-    message: "Trip Started !",
+    message: "Trip Started!",
   });
 });
 
@@ -252,10 +259,17 @@ export const finishTrip = asyncHandler(async (req, res, next) => {
     });
   }
 
+  if (trip.status !== "current") {
+    return res.status(400).json({
+      success: false,
+      message: "Trip can only be completed if its status is 'current'",
+    });
+  }
+
   const ownerEarnings = trip.totalEarnings * 0.5;
   const tripLeaderEarnings = trip.totalEarnings * 0.45;
 
-  const owner = await ownerModel.findById(trip.createdBy);
+  const owner = await OwnerModel.findById(trip.createdBy);
   const tripLeader = await tripLeaderModel.findById(trip.tripLeaderId);
 
   if (!owner || !tripLeader) {
@@ -278,7 +292,6 @@ export const finishTrip = asyncHandler(async (req, res, next) => {
     message: "Trip completed and earnings distributed!",
   });
 });
-
 
 
 export const rateDetails = asyncHandler(async (req, res, next) => {
