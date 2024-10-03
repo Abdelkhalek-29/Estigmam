@@ -494,9 +494,15 @@ export const complete = asyncHandler(async (req, res, next) => {
 export const lastTrips = asyncHandler(async (req, res, next) => {
   const language = req.query.lang || req.headers["accept-language"] || "en";
   const nameField = language === "ar" ? "name_ar" : "name_en";
-  const filter = req.tripLeader
-    ? { tripLeaderId: req.tripLeader._id }
-    : { createBy: req.owner._id };
+
+  const filter = {
+    ...(
+      req.tripLeader
+        ? { tripLeaderId: req.tripLeader._id }
+        : { createBy: req.owner._id }
+    ),
+    status: { $ne: "pending" }, 
+  };
 
   const upcomingTrips = await tripModel
     .find(filter)
@@ -527,20 +533,19 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
     })
     .sort({ startDate: -1 });
 
-  // Transform the data
   const transformedTrips = upcomingTrips.map((trip) => {
-    const { typeOfPlace, category } = trip.toObject(); // Destructure the populated fields
+    const { typeOfPlace, category } = trip.toObject();
 
     return {
-      ...trip.toObject(), // Convert Mongoose document to plain object
+      ...trip.toObject(),
       typeOfPlace: {
         _id: typeOfPlace._id,
-        name: typeOfPlace[nameField], // Unified name field
+        name: typeOfPlace[nameField], 
       },
       category: {
         _id: category._id,
-        name: category[nameField], // Unified name field
-        id: category._id, // Add the `id` field
+        name: category[nameField], 
+        id: category._id, 
       },
     };
   });
