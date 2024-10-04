@@ -581,6 +581,7 @@ export const trips = asyncHandler(async (req, res, next) => {
   const ownerId = req.owner ? req.owner._id : null;
   const tripLeaderId = req.tripLeader ? req.tripLeader._id : null;
 
+  // Mapping status index to string values
   const statusMap = {
     0: "current",
     1: "upComing",
@@ -626,6 +627,20 @@ export const trips = asyncHandler(async (req, res, next) => {
       : "";
     const activityName = trip.activity ? trip.activity[nameField] : "";
 
+    const bedTypes = trip.bedType
+      ? trip.bedType.map((bed) => ({
+          _id: bed._id,
+          name: bed.name,
+        }))
+      : [];
+
+    const additions = trip.addition
+      ? trip.addition.map((add) => ({
+          _id: add._id,
+          name: add.name,
+        }))
+      : [];
+
     return {
       ...trip.toObject(),
       category: {
@@ -640,6 +655,8 @@ export const trips = asyncHandler(async (req, res, next) => {
         _id: trip.activity?._id || "",
         name: activityName,
       },
+      bedType: bedTypes, // Returning bedType as a list of objects
+      addition: additions, // Returning addition as a list of objects
     };
   });
 
