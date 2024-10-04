@@ -575,30 +575,36 @@ export const cancelTrip = asyncHandler(async (req, res, next) => {
 export const trips = asyncHandler(async (req, res, next) => {
   const language = req.query.lang || req.headers["accept-language"] || "en";
   const nameField = language === "ar" ? "name_ar" : "name_en";
-  const { status } = req.query;
+  
+  const { status: statusIndex } = req.query;
 
-  // تحقق من وجود ownerId أو tripLeaderId
   const ownerId = req.owner ? req.owner._id : null;
   const tripLeaderId = req.tripLeader ? req.tripLeader._id : null;
 
-  // إعداد فلترة البحث بناءً على ownerId أو tripLeaderId
-  const filter = {
-    status: status,
+  const statusMap = {
+    0: "current",
+    1: "upComing",
+    2: null,
+    3: "completed",
+    4: "cancelled",
+    5: "rejected",
   };
 
+  const status = statusMap[statusIndex] || null;
+
+  const filter = {};
   if (ownerId) {
     filter.createdBy = ownerId;
   }
-
   if (tripLeaderId) {
     filter.tripLeaderId = tripLeaderId;
+  }
+  if (status !== null) {
+    filter.status = status;
   }
 
   const trips = await tripModel
     .find(filter)
-    .select(
-      "city berh peopleNumber numberOfPeopleAvailable status startLocation endLocation startDate finalPrice tripCode tripLeaderId"
-    )
     .populate({
       path: "typeOfPlace",
       select: `${nameField}`,
@@ -610,7 +616,6 @@ export const trips = asyncHandler(async (req, res, next) => {
     .populate("tripLeaderId", "averageRating")
     .sort({ startDate: -1 });
 
-  // تعديل الحقول إذا كانت موجودة
   trips.forEach((trip) => {
     if (trip.typeOfPlace) {
       trip.typeOfPlace.name = trip.typeOfPlace[nameField];
