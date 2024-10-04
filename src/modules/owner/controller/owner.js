@@ -575,7 +575,7 @@ export const cancelTrip = asyncHandler(async (req, res, next) => {
 export const trips = asyncHandler(async (req, res, next) => {
   const language = req.query.lang || req.headers["accept-language"] || "en";
   const nameField = language === "ar" ? "name_ar" : "name_en";
-  
+
   const { status: statusIndex } = req.query;
 
   const ownerId = req.owner ? req.owner._id : null;
@@ -605,34 +605,50 @@ export const trips = asyncHandler(async (req, res, next) => {
 
   const trips = await tripModel
     .find(filter)
-    .populate({
-      path: "typeOfPlace",
-      select: `${nameField}`,
-    })
-    .populate({
-      path: "category",
-      select: `${nameField}`,
-    })
-    .populate("tripLeaderId", "averageRating")
+    .populate([
+      { path: "typeOfPlace", select: "name_ar name_en" },
+      { path: "category", select: "name_ar name_en" },
+      { path: "bedType", select: "name" },
+      { path: "addition", select: "name" },
+      {
+        path: "tripLeaderId",
+        select: "profileImage _id name tripsCounter averageRating",
+      },
+      { path: "cityId", select: "name" },
+      { path: "activity", select: "name_ar name_en" },
+    ])
     .sort({ startDate: -1 });
 
-  trips.forEach((trip) => {
-    if (trip.typeOfPlace) {
-      trip.typeOfPlace.name = trip.typeOfPlace[nameField];
-      delete trip.typeOfPlace[nameField];
-    }
+  const formattedTrips = trips.map((trip) => {
+    const categoryName = trip.category ? trip.category[nameField] : "";
+    const typeOfPlaceName = trip.typeOfPlace
+      ? trip.typeOfPlace[nameField]
+      : "";
+    const activityName = trip.activity ? trip.activity[nameField] : "";
 
-    if (trip.category) {
-      trip.category.name = trip.category[nameField];
-      delete trip.category[nameField];
-    }
+    return {
+      ...trip.toObject(),
+      category: {
+        _id: trip.category?._id,
+        name: categoryName,
+      },
+      typeOfPlace: {
+        _id: trip.typeOfPlace?._id,
+        name: typeOfPlaceName,
+      },
+      activity: {
+        _id: trip.activity?._id || "",
+        name: activityName,
+      },
+    };
   });
 
   res.status(200).json({
     success: true,
-    data: trips,
+    data: formattedTrips,
   });
 });
+
 
 export const getCreatedActivities = asyncHandler(async (req, res, next) => {
   const userId = req.owner.id;
