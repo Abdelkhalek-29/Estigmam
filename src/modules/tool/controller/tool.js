@@ -285,10 +285,6 @@ export const getUpdatedTools =asyncHandler( async (req, res) => {
     .find({ createBy: ownerId, isUpdated: true })
     .select("name type section licensePd licenseNunmber licenseEndDate toolImage toolVideo location portName Examination_date details activityId code isUpdated");
 
-  if (tools.length === 0) {
-    return res.status(404).json({ message: "No updated tools found for this owner" });
-  }
-
   const formattedTools = tools.map(tool => ({
     ...tool._doc,
     section: {

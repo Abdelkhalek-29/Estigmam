@@ -33,8 +33,8 @@ const tripLeaderSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["online", "offline"],
-      default: "offline",
+      enum: ["active", "Inactive","pending"],
+      default: "pending",
     },
     role: {
       type: String,

@@ -130,11 +130,11 @@ export const register = asyncHandler(async (req, res, next) => {
           });
         }
       } else if (activity) {
-        const activityType = await typesOfPlacesModel.findById(activity.type); // Get type from activity
+        const activityType = await typesOfPlacesModel.findById(activity.type); 
         for (let i = 0; i < +quan; i++) {
           await placesModel.create({
             activityId: id,
-            type: activityType._id, // Set type from activity
+            type: activityType._id, 
             createBy: user._id,
           });
         }
@@ -153,11 +153,12 @@ export const register = asyncHandler(async (req, res, next) => {
       email: user.email,
       country: {
         id: countryId._id,
-        name: countryId.name, // Assuming country model has a 'name' field
+        name: countryId.name,
+        image:countryId.image.url
       },
       city: {
         id: cityId._id,
-        name: cityId.name, // Assuming city model has a 'name' field
+        name: cityId.name, 
       },
       phone: user.phone,
       userName: user.userName,
@@ -176,7 +177,7 @@ export const login = asyncHandler(async (req, res, next) => {
 
   user = await OwnerModel.findOne({
     $or: [{ phone }, { phoneWithCode: phone }],
-  }).populate('country', 'name').populate('city', 'name'); 
+  }).populate('country', 'name image').populate('city', 'name'); 
 
   if (user) {
     role = "Owner";
@@ -227,6 +228,7 @@ export const login = asyncHandler(async (req, res, next) => {
       country: {
         id: user.country._id,
         name: user.country.name,
+        image:user.country.image.url
       },
       city: {
         id: user.city._id,

@@ -11,7 +11,7 @@ export const addTripLeader = asyncHandler(async (req, res, next) => {
 
   if (!Array.isArray(phone) || phone.length === 0) {
     return next(
-      new Error("The 'phones' field must be a non-empty array.", {
+      new Error("The 'phone' field must be a non-empty array.", {
         status: 400,
       })
     );
