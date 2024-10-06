@@ -19,7 +19,6 @@ export const addPlace = asyncHandler(async (req, res, next) => {
     licenseNumber,
     description,
     ExpiryDate,
-    slug: slugify(name),
     createBy: req.owner._id,
   });
   if (req.files.license) {
@@ -68,7 +67,6 @@ export const addPlace = asyncHandler(async (req, res, next) => {
   return res.status(201).json({
     success: true,
     message: "place added successfully",
-    results: place,
   });
 });
 
@@ -82,7 +80,6 @@ export const updatePlace = asyncHandler(async (req, res, next) => {
   }
   if (req.body.name) {
     place.name = req.body.name;
-    place.slug = slugify(req.body.name);
   }
   if (req.body.type) {
     const typesOfPlaces = await typesOfPlacesModel.findOne({
@@ -145,7 +142,6 @@ export const updatePlace = asyncHandler(async (req, res, next) => {
   return res.status(201).json({
     success: true,
     message: "updated successfully",
-    results: place,
   });
 });
 export const getAllPlaces = asyncHandler(async (req, res, next) => {
@@ -203,5 +199,39 @@ export const deletePlace = asyncHandler(async (req, res, next) => {
     success: true,
     status: 200,
     message: "place deleted",
+  });
+});
+
+export const getUpdatedPlaces = asyncHandler(async (req, res) => {
+
+  const ownerId = req.owner?.id;
+  const language = req.headers["accept-language"] || "en";
+
+  if (!ownerId) {
+    return res.status(403).json({ message: "Unauthorized" });
+  }
+
+  const places = await placesModel
+    .find({ createBy: ownerId, isUpdated: true })
+    .populate({
+      path: "type", 
+      select: `${language === "ar" ? "name_ar" : "name_en"}`, 
+    })
+    .select("name type location description LicenseFile licenseNumber ExpiryDate images video code isUpdated");
+
+  if (places.length === 0) {
+    return res.status(404).json({ message: "No updated places found for this owner" });
+  }
+
+  const formattedPlaces = places.map(place => ({
+    ...place._doc,
+    type: {
+      name: place.type[language === "ar" ? "name_ar" : "name_en"], 
+    },
+  }));
+
+  return res.status(200).json({
+    success: true,
+    places: formattedPlaces,
   });
 });

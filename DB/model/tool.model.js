@@ -59,10 +59,6 @@ const toolSchema = new Schema(
     details: {
       type: String,
     },
-    activityId: {
-      type: Types.ObjectId,
-      ref: "Activity",
-    },
     code:{
       type:String,
       unique: true

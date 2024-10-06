@@ -8,9 +8,6 @@ const placesSchema = new Schema(
       min: 5,
       max: 20,
     },
-    slug: {
-      type: String,
-    },
     type: {
       type: Types.ObjectId,
       required: true,
@@ -28,7 +25,7 @@ const placesSchema = new Schema(
       type: String,
     },
     ExpiryDate: {
-      type: String,
+      type: Date,
     },
 
     images: [

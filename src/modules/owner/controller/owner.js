@@ -16,6 +16,13 @@ import { typesOfPlaces } from "../../typesOfPlaces/controller/typesOfPlaces.js";
 import typesOfPlacesModel from "../../../../DB/model/typesOfPlaces.model.js";
 import { updateTool } from "../../tool/controller/tool.js";
 
+const predefinedTypes = [
+  { id: "66dcc2b4626dfd336c9d8732", name: { en: "Boats", ar: "مراكب" } },
+  { id: "66dcc2c6626dfd336c9d873a", name: { en: "Yacht", ar: "يخت" } },
+  { id: "66dc1b6737f54a0f875bf3ce", name: { en: "Jet boat", ar: "جيت بوت" } },
+  { id: "66dc1ba737f54a0f875bf3d1", name: { en: "Sea bike", ar: "دباب بحرى" } },
+];
+
 export const register = asyncHandler(async (req, res, next) => {
   const {
     email,
@@ -55,17 +62,10 @@ export const register = asyncHandler(async (req, res, next) => {
   }
 
   if (password !== confirmPassword) {
-    return next(
-      new Error("New password and confirm password do not match", {
-        cause: 400,
-      })
-    );
+    return next(new Error("New password and confirm password do not match", { cause: 400 }));
   }
 
-  const hashPassword = bcryptjs.hashSync(
-    password,
-    Number(process.env.SALT_ROUND)
-  );
+  const hashPassword = bcryptjs.hashSync(password, Number(process.env.SALT_ROUND));
 
   const user = await OwnerModel.create({
     fullName,
@@ -76,11 +76,11 @@ export const register = asyncHandler(async (req, res, next) => {
     password: hashPassword,
     nationalID,
   });
-  const userCode = randomstring.generate({
-    length: 15,
-  });
-  user.ownerCode.code = userCode;
+
+  const userCode = randomstring.generate({ length: 15 });
+  user.ownerCode = { code: userCode }; 
   await user.save();
+
   const token = jwt.sign(
     { id: user._id, email: user.email },
     process.env.TOKEN_SIGNATURE
@@ -95,41 +95,31 @@ export const register = asyncHandler(async (req, res, next) => {
   user.phoneWithCode = countryId.codePhone + phone.slice(1);
   await user.save();
 
-  // Handle MarineActivity
   if (MarineActivity) {
     for (const key of MarineActivity) {
       const { id, quan } = key;
-      const type = await typesOfPlacesModel.findById(id); // Check if it's a type
-      const activity = await activityModel.findById(id); // Check if it's an activity
 
-      if (type) {
-        // It's a type
+      const predefinedType = predefinedTypes.find(type => type.id === id);
+      if (predefinedType) {
         for (let i = 0; i < +quan; i++) {
           await toolModel.create({
-            type: id,
+            type: predefinedType.id, 
             createBy: user._id,
-          });
-        }
-      } else if (activity) {
-        // It's an activity
-        const activityType = await typesOfPlacesModel.findById(activity.type); // Get type from activity
-        for (let i = 0; i < +quan; i++) {
-          await toolModel.create({
-            activityId: id,
-            type: activityType._id, // Set type from activity
-            createBy: user._id,
+            section: {
+              name_en: predefinedType.name.en, 
+              name_ar: predefinedType.name.ar, 
+            },
           });
         }
       }
     }
   }
 
-  // Handle LandActivity
   if (LandActivity) {
     for (const key of LandActivity) {
       const { id, quan } = key;
-      const type = await typesOfPlacesModel.findById(id); // Check if it's a type
-      const activity = await activityModel.findById(id); // Check if it's an activity
+      const type = await typesOfPlacesModel.findById(id); 
+      const activity = await activityModel.findById(id); 
 
       if (type) {
         // It's a type
@@ -140,7 +130,6 @@ export const register = asyncHandler(async (req, res, next) => {
           });
         }
       } else if (activity) {
-        // It's an activity
         const activityType = await typesOfPlacesModel.findById(activity.type); // Get type from activity
         for (let i = 0; i < +quan; i++) {
           await placesModel.create({
@@ -169,8 +158,8 @@ export const register = asyncHandler(async (req, res, next) => {
       role: user.role,
       isUpdated: user.isUpdated,
       profileImage: user.profileImage,
-      isDate:user.isDate,
-      id:user._id
+      isDate: user.isDate,
+      id: user._id,
     },
   });
 });
@@ -667,89 +656,84 @@ export const trips = asyncHandler(async (req, res, next) => {
 
 
 export const getCreatedActivities = asyncHandler(async (req, res, next) => {
-  const userId = req.owner.id;
+  const userId = req.owner.id; // Get the owner ID from the request
   const language = req.headers["accept-language"] || "en";
 
   // Fetch created tools
   const createdTools = await toolModel
     .find({ createBy: userId, isUpdated: false })
-    .populate({
-      path: "type", // Populate type if available
-      select: `${language === "ar" ? "name_ar" : "name_en"}`,
-    })
-    .populate({
-      path: "activityId",
-      populate: {
-        path: "type", // Populate the type from the Activity model
-        select: `${language === "ar" ? "name_ar" : "name_en"}`,
-      },
-    })
-    .select("_id type activityId code");
+    .select("_id type code") // Only select necessary fields
+    .lean(); // Use lean to get plain JavaScript objects
+
+  // Debug log to check fetched tools
+  console.log("Created Tools:", createdTools);
+
+  // Create a map to store tools grouped by their type
+  const toolsByType = {};
+
+  createdTools.forEach((tool) => {
+    const toolTypeId = tool.type.toString(); // Convert ObjectId to string
+
+    // Find the predefined type matching the tool's type
+    const predefinedType = predefinedTypes.find(type => type.id === toolTypeId);
+
+    // Debug log for unknown types
+    if (!predefinedType) {
+      console.log(`Unknown Type for Tool ID: ${tool._id}, Type ID: ${toolTypeId}`);
+      return; // Skip this tool if the type is unknown
+    }
+
+    // Prepare to group by type
+    const typeKey = predefinedType.id;
+    const typeName = predefinedType.name[language];
+
+    // Initialize the type grouping if not exists
+    if (!toolsByType[typeKey]) {
+      toolsByType[typeKey] = {
+        typeName,
+        ids: [],
+        codes: [],
+      };
+    }
+
+    toolsByType[typeKey].ids.push(tool._id);
+    toolsByType[typeKey].codes.push(tool.code);
+  });
+
+  // Debug log to check grouped tools
+  console.log("Grouped Tools by Type:", toolsByType);
 
   // Fetch created places
   const createdPlaces = await placesModel
-    .find({ createBy: userId, isUpdated: false })
+    .find({ createBy: userId }) // All places created by the owner
     .populate({
-      path: "type",
+      path: "type", // Populate the type
       select: `${language === "ar" ? "name_ar" : "name_en"}`,
     })
-    .select("_id type code");
+    .select("_id type code"); // Only select necessary fields
 
-  // Group tools by type or activityId
-  const groupedTools = {};
-
-  createdTools.forEach((tool) => {
-    const typeKey = tool.activityId
-      ? `activity_${tool.activityId._id}`
-      : `type_${tool.type._id}`;
-    const typeName = tool.activityId
-      ? tool.activityId.type[language === "ar" ? "name_ar" : "name_en"]
-      : tool.type[language === "ar" ? "name_ar" : "name_en"];
-
-    if (!groupedTools[typeKey]) {
-      groupedTools[typeKey] = {
-        typeName,
-        ids: [],
-        codes: [], // Initialize an array to store the codes
-      };
-    }
-
-    groupedTools[typeKey].ids.push(tool._id);
-    groupedTools[typeKey].codes.push(tool.code); // Add the code to the list
-  });
-
-  // Group places by type
-  const groupedPlaces = {};
+  // Create a map to store places grouped by their type
+  const placesByType = {};
 
   createdPlaces.forEach((place) => {
-    const typeKey = `type_${place.type._id}`;
+    const typeKey = place.type._id.toString(); // Using the populated type ID
     const typeName = place.type[language === "ar" ? "name_ar" : "name_en"];
 
-    if (!groupedPlaces[typeKey]) {
-      groupedPlaces[typeKey] = {
+    if (!placesByType[typeKey]) {
+      placesByType[typeKey] = {
         typeName,
         ids: [],
-        codes: [], // Initialize an array to store the codes
+        codes: [],
       };
     }
 
-    groupedPlaces[typeKey].ids.push(place._id);
-    groupedPlaces[typeKey].codes.push(place.code); // Add the code to the list
+    placesByType[typeKey].ids.push(place._id);
+    placesByType[typeKey].codes.push(place.code);
   });
 
-  // If no tools or places found, return a 404 error
-  if (
-    Object.keys(groupedTools).length === 0 &&
-    Object.keys(groupedPlaces).length === 0
-  ) {
-    return next(
-      new Error("No created activities found for this user", { cause: 404 })
-    );
-  }
-
   // Prepare final response
-  const toolsWithDetails = Object.values(groupedTools);
-  const placesWithDetails = Object.values(groupedPlaces);
+  const toolsWithDetails = Object.values(toolsByType);
+  const placesWithDetails = Object.values(placesByType);
 
   return res.status(200).json({
     success: true,
@@ -757,6 +741,7 @@ export const getCreatedActivities = asyncHandler(async (req, res, next) => {
     places: placesWithDetails,
   });
 });
+ 
 
 export const getActivity = asyncHandler(async (req, res, next) => {
   const userId = req.owner._id; // Assuming you get the owner ID from req.owner

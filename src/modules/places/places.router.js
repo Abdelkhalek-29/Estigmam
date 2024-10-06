@@ -49,6 +49,6 @@ router.delete(
   // validation(validators.deleteSubCategory),
   placesController.deletePlace
 );
-
+router.get("/updatedPlaces",auth,placesController.getUpdatedPlaces)
 
 export default router;
