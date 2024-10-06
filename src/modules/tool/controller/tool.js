@@ -102,6 +102,7 @@ export const updateTool = asyncHandler(async (req, res, next) => {
     return next(new Error(" Unauthorized", { status: 403 }));
   }
 
+  // Upload license image if present
   if (req.files["license"]) {
     const licenseFile = req.files["license"][0];
     const licenseUpload = await cloudinary.uploader.upload(licenseFile.path, {
@@ -113,6 +114,7 @@ export const updateTool = asyncHandler(async (req, res, next) => {
     };
   }
 
+  // Upload tool images if present
   if (req.files["toolImages"]) {
     const toolImages = await Promise.all(
       req.files["toolImages"].map(async (file) => {
@@ -123,6 +125,7 @@ export const updateTool = asyncHandler(async (req, res, next) => {
     tool.toolImage = toolImages;
   }
 
+  // Upload tool video if present
   if (req.files["toolVideo"]) {
     const toolVideoFile = req.files["toolVideo"][0];
     const videoUpload = await cloudinary.uploader.upload(toolVideoFile.path, {
@@ -133,12 +136,8 @@ export const updateTool = asyncHandler(async (req, res, next) => {
 
   const updateFields = req.body;
 
+  // Update tool type if present
   if (updateFields.type) {
-    const typesOfPlaces = await typesOfPlacesModel.findById(updateFields.type);
-    if (!typesOfPlaces) {
-      return next(new Error("typesOfPlaces not found!", { cause: 404 }));
-    }
-
     const matchingType = predefinedTypes.find((item) => item.id === updateFields.type);
     if (matchingType) {
       tool.section = {
@@ -149,9 +148,11 @@ export const updateTool = asyncHandler(async (req, res, next) => {
     tool.type = updateFields.type;
   }
 
+  // Update other fields
   Object.keys(updateFields).forEach((key) => {
     tool[key] = updateFields[key];
   });
+
   tool.isUpdated = true;
   await tool.save();
 
@@ -161,6 +162,7 @@ export const updateTool = asyncHandler(async (req, res, next) => {
     message: "Tool updated successfully",
   });
 });
+
 
 export const deleteTool = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
