@@ -421,3 +421,64 @@ export const getConversations = asyncHandler(async (req, res, next) => {
 
   return res.status(200).json({ success: true, conversations });
 });
+
+export const deleteConversation = asyncHandler(async (req, res, next) => {
+  const { conversationId } = req.params;
+  const userId = req.user
+    ? req.user._id
+    : req.owner
+    ? req.owner._id
+    : req.tripLeader._id;
+
+  let conversation = await conversationModel.findById(conversationId);
+  let isGroupChat = false;
+
+  if (!conversation) {
+    conversation = await GroupChat.findById(conversationId);
+    if (!conversation) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Conversation not found" });
+    }
+    isGroupChat = true;
+  }
+
+  if (!isGroupChat) {
+    if (!conversation.participants.includes(userId)) {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "You are not authorized to delete this conversation",
+        });
+    }
+
+    await messageModel.deleteMany({ conversationId: conversation._id });
+    await conversation.remove();
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Private conversation deleted" });
+  }
+
+  if (isGroupChat) {
+    const isAdminOrCreator =
+      conversation.admins.includes(userId) || conversation.createdBy.equals(userId);
+
+    if (!isAdminOrCreator) {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Only an admin or the group creator can delete this conversation",
+        });
+    }
+
+    await messageModel.deleteMany({ conversationId: conversation._id });
+    await conversation.remove();
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Group conversation deleted" });
+  }
+});

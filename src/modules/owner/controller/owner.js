@@ -390,8 +390,7 @@ export const VerifyCode = asyncHandler(async (req, res, next) => {
 });
 
 export const complete = asyncHandler(async (req, res, next) => {
-  console.log(req.body); // Log form fields
-  console.log(req.files); // Log uploaded files
+
   const { fullName, email, nationalID, phone, country, city } = req.body;
 
   const owner = await OwnerModel.findById(req.owner._id);
@@ -938,5 +937,6 @@ export const getOwnerCode = asyncHandler(async (req, res, next) => {
     },
   });
 });
+
 
 

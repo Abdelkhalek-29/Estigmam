@@ -9,7 +9,7 @@ const toolSchema = new Schema(
     },
     type: {
       type: Types.ObjectId,
-      ref: "TypesOfPlaces",
+   //   ref: "TypesOfPlaces",
       required: true,
     },
     licensePd: {
@@ -71,7 +71,11 @@ const toolSchema = new Schema(
     isUpdated:{
       type:Boolean,
       default:false
-    }
+    },
+    section: {
+      name_en: { type: String },
+      name_ar: { type: String },
+    },
   },
   { timestamps: true }
 );

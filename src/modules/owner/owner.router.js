@@ -55,7 +55,6 @@ router.patch(
   validation(Validators.resetPassword),
   ownerController.resetPasswordByCode
 );
-
 router.patch(
   "/completeRegister",
   (req, res, next) => {

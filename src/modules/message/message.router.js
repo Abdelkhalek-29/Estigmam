@@ -13,4 +13,6 @@ router.post(
   messageController.sendMessage
 );
 
+router.delete('conversations', messageController.deleteConversation);
+
 export default router;
