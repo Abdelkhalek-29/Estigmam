@@ -151,8 +151,14 @@ export const register = asyncHandler(async (req, res, next) => {
       fullName: user.fullName || user.name,
       nationalID: user.nationalID || user.N_id,
       email: user.email,
-      country: user.country,
-      city: user.city,
+      country: {
+        id: countryId._id,
+        name: countryId.name, // Assuming country model has a 'name' field
+      },
+      city: {
+        id: cityId._id,
+        name: cityId.name, // Assuming city model has a 'name' field
+      },
       phone: user.phone,
       userName: user.userName,
       role: user.role,
@@ -170,12 +176,12 @@ export const login = asyncHandler(async (req, res, next) => {
 
   user = await OwnerModel.findOne({
     $or: [{ phone }, { phoneWithCode: phone }],
-  });
+  }).populate('country', 'name').populate('city', 'name'); 
 
   if (user) {
     role = "Owner";
   } else {
-    user = await tripLeaderModel.findOne({ phone });
+    user = await tripLeaderModel.findOne({ phone }).populate('country', 'name').populate('city', 'name');
 
     if (user) {
       role = "TripLeader";
@@ -185,6 +191,7 @@ export const login = asyncHandler(async (req, res, next) => {
   if (!user) {
     return next(new Error("Invalid phone or password", { status: 400 }));
   }
+
   const isMatch =
     role === "Owner"
       ? bcryptjs.compareSync(password, user.password)
@@ -217,16 +224,21 @@ export const login = asyncHandler(async (req, res, next) => {
       fullName: user.fullName || user.name,
       nationalID: user.nationalID || user.N_id,
       email: user.email,
-      country: user.country,
-      city: user.city,
+      country: {
+        id: user.country._id,
+        name: user.country.name,
+      },
+      city: {
+        id: user.city._id,
+        name: user.city.name,
+      },
       phone: user.phone,
       userName: user.userName,
       role: user.role,
       isUpdated: user.isUpdated,
       profileImage: user.profileImage,
-      isDate:user.isDate,
-      id:user._id
-
+      isDate: user.isDate,
+      id: user._id,
     },
   });
 });

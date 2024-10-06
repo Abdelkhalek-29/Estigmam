@@ -8,6 +8,8 @@ import auth from "../../middleware/auth.js";
 import { validation } from "../../middleware/validation.js";
 const router = Router({ mergeParams: true });
 
+router.get("/updatedPlaces", auth, placesController.getUpdatedPlaces);
+
 router.post(
   "/",
   auth,
@@ -49,6 +51,5 @@ router.delete(
   // validation(validators.deleteSubCategory),
   placesController.deletePlace
 );
-router.get("/updatedPlaces",auth,placesController.getUpdatedPlaces)
 
 export default router;

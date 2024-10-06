@@ -75,68 +75,77 @@ export const updatePlace = asyncHandler(async (req, res, next) => {
     _id: req.params.placeId,
     createBy: req.owner._id,
   });
+
   if (!place) {
     return next(new Error("place not found", { cause: 404 }));
   }
+
   if (req.body.name) {
     place.name = req.body.name;
   }
+  
   if (req.body.type) {
     const typesOfPlaces = await typesOfPlacesModel.findOne({
       _id: req.body.type,
     });
+    
     if (!typesOfPlaces) {
       return next(new Error("typesOfPlaces not found", { cause: 404 }));
     }
+    
     place.type = req.body.type;
   }
-  if (req.location) {
-    place.location = JSON.parse(req.body.location);
-  }
-  if (req.body.licenseNumber) {
-    place.licenseNumber = req.body.licenseNumber;
-  }
-  if (req.body.ExpiryDate) {
-    place.ExpiryDate = req.body.ExpiryDate;
-  }
+
   if (req.body.location) {
     place.location = JSON.parse(req.body.location);
   }
-  if (req.files.license) {
+
+  if (req.body.licenseNumber) {
+    place.licenseNumber = req.body.licenseNumber;
+  }
+
+  if (req.body.ExpiryDate) {
+    place.ExpiryDate = req.body.ExpiryDate;
+  }
+
+  if (req.files.license && place.LicenseFile) {
     const { secure_url, public_id } = await cloudinary.uploader.upload(
       req.files.license[0].path,
       {
-        public_id: place.LicenseFile.id,
+        public_id: place.LicenseFile.id, 
       }
     );
     place.LicenseFile.url = secure_url;
   }
-  if (req.files.placeImages) {
+
+  if (req.files.placeImages && place.images) {
     let i = 0;
     let images = [];
     for (const file of req.files.placeImages) {
       const { secure_url, public_id } = await cloudinary.uploader.upload(
         file.path,
         {
-          public_id: place.images[i++].id,
+          public_id: place.images[i]?.id || undefined, 
         }
       );
       images.push({ url: secure_url, id: public_id });
+      i++; 
     }
     place.images = images;
   }
-  if (req.files.placeVideo) {
+  if (req.files.placeVideo && place.video) {
     const { secure_url, public_id } = await cloudinary.uploader.upload(
       req.files.placeVideo[0].path,
       {
         resource_type: "video",
-        public_id: place.video.id,
+        public_id: place.video.id, 
       }
     );
     place.video.url = secure_url;
   }
 
-  place.isUpdated=true
+  place.isUpdated = true;
+
   await place.save();
 
   return res.status(201).json({
@@ -203,30 +212,38 @@ export const deletePlace = asyncHandler(async (req, res, next) => {
 });
 
 export const getUpdatedPlaces = asyncHandler(async (req, res) => {
-
-  const ownerId = req.owner?.id;
+  const ownerId = req.owner?.id; // Safely access owner id
   const language = req.headers["accept-language"] || "en";
 
   if (!ownerId) {
     return res.status(403).json({ message: "Unauthorized" });
   }
 
+  console.log("Owner ID:", ownerId); // Log ownerId for debugging
+
+  // Fetch updated places for the owner
   const places = await placesModel
     .find({ createBy: ownerId, isUpdated: true })
     .populate({
-      path: "type", 
-      select: `${language === "ar" ? "name_ar" : "name_en"}`, 
+      path: "type",
+      select: `${language === "ar" ? "name_ar" : "name_en"}`,
     })
-    .select("name type location description LicenseFile licenseNumber ExpiryDate images video code isUpdated");
+    .select("name type location description LicenseFile licenseNumber ExpiryDate images video code isUpdated")
+    .catch(err => {
+      console.error("Database query failed:", err); // Log the error
+      return res.status(500).json({ message: "Internal server error" }); // Handle error response
+    });
 
-  if (places.length === 0) {
+  // Check if places found
+  if (!places || places.length === 0) {
     return res.status(404).json({ message: "No updated places found for this owner" });
   }
 
+  // Format places for response
   const formattedPlaces = places.map(place => ({
     ...place._doc,
     type: {
-      name: place.type[language === "ar" ? "name_ar" : "name_en"], 
+      name: place.type[language === "ar" ? "name_ar" : "name_en"],
     },
   }));
 
