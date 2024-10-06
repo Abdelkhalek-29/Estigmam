@@ -12,7 +12,7 @@ const toolSchema = new Schema(
    //   ref: "TypesOfPlaces",
       required: true,
     },
-    licensePd: {
+    licensePdf: {
       id: { type: String },
       url: { type: String },
     },
@@ -26,8 +26,8 @@ const toolSchema = new Schema(
     },
     toolImage: [
       {
-        id: { type: String },
         url: { type: String },
+        id: { type: String },
       },
     ],
     toolVideo: {

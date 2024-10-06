@@ -95,74 +95,77 @@ export const updateTool = asyncHandler(async (req, res, next) => {
 
   const tool = await toolModel.findById(id);
   if (!tool) {
-    return next(new Error(" Tool Not Found ! ", { status: 404 }));
+    return next(new Error("Tool Not Found!", { status: 404 }));
   }
 
   if (tool.createBy.toString() !== req.owner._id.toString()) {
-    return next(new Error(" Unauthorized", { status: 403 }));
+    return next(new Error("Unauthorized", { status: 403 }));
   }
 
-  // Upload license image if present
-  if (req.files["license"]) {
-    const licenseFile = req.files["license"][0];
-    const licenseUpload = await cloudinary.uploader.upload(licenseFile.path, {
-      resource_type: "raw",
-    });
-    tool.licenseImage = {
-      id: licenseUpload.public_id,
-      url: licenseUpload.secure_url,
-    };
-  }
-
-  // Upload tool images if present
-  if (req.files["toolImages"]) {
-    const toolImages = await Promise.all(
-      req.files["toolImages"].map(async (file) => {
-        const result = await cloudinary.uploader.upload(file.path);
-        return { id: result.public_id, url: result.secure_url };
-      })
+  // Update license PDF if it exists and there is a previous file to replace
+  if (req.files.licensePdf && tool.licensePdf) {
+    const { secure_url, public_id } = await cloudinary.uploader.upload(
+      req.files.licensePdf[0].path,
+      {
+        public_id: tool.licensePdf.id, // Replace the existing file in Cloudinary
+      }
     );
-    tool.toolImage = toolImages;
+    tool.licensePdf.url = secure_url;
+    tool.licensePdf.id = public_id;
   }
 
-  // Upload tool video if present
-  if (req.files["toolVideo"]) {
-    const toolVideoFile = req.files["toolVideo"][0];
-    const videoUpload = await cloudinary.uploader.upload(toolVideoFile.path, {
-      resource_type: "video",
-    });
-    tool.toolVideo = { id: videoUpload.public_id, url: videoUpload.secure_url };
-  }
-
-  const updateFields = req.body;
-
-  // Update tool type if present
-  if (updateFields.type) {
-    const matchingType = predefinedTypes.find((item) => item.id === updateFields.type);
-    if (matchingType) {
-      tool.section = {
-        name_en: matchingType.name.en,
-        name_ar: matchingType.name.ar,
-      };
+  // Update tool images if present
+  if (req.files.toolImage && tool.toolImage) {
+    let i = 0;
+    let images = [];
+    for (const file of req.files.toolImage) {
+      const { secure_url, public_id } = await cloudinary.uploader.upload(
+        file.path,
+        {
+          public_id: tool.toolImage[i]?.id || undefined, // Replace existing images or upload new ones
+        }
+      );
+      images.push({ url: secure_url, id: public_id });
+      i++;
     }
-    tool.type = updateFields.type;
+    tool.toolImage = images;
   }
 
-  // Update other fields
+  // Update tool video if present
+  if (req.files.toolVideo && tool.toolVideo) {
+    const { secure_url, public_id } = await cloudinary.uploader.upload(
+      req.files.toolVideo[0].path,
+      {
+        resource_type: "video",
+        public_id: tool.toolVideo.id, // Replace the existing video in Cloudinary
+      }
+    );
+    tool.toolVideo.url = secure_url;
+    tool.toolVideo.id = public_id;
+  }
+
+  // Update other fields from req.body
+  const updateFields = req.body;
+  
   Object.keys(updateFields).forEach((key) => {
-    tool[key] = updateFields[key];
+    if (updateFields[key] !== undefined) {
+      tool[key] = updateFields[key];
+    }
   });
 
+  // Mark the tool as updated
   tool.isUpdated = true;
+
+  // Save the updated tool
   await tool.save();
 
   res.status(200).json({
     success: true,
     status: 200,
     message: "Tool updated successfully",
+    tool,
   });
 });
-
 
 export const deleteTool = asyncHandler(async (req, res, next) => {
   const { id } = req.params;

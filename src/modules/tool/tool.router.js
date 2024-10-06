@@ -27,12 +27,12 @@ router.patch(
   auth,
   isAuthorized("owner"),
   fileUpload([
-    ...fileValidation.file,
-    ...fileValidation.video,
     ...fileValidation.image,
+    ...fileValidation.video,
+    ...fileValidation.file,
   ]).fields([
-    { name: "license", maxCount: 1 },
-    { name: "toolImages", maxCount: 8 },
+    { name: "licensePdf", maxCount: 1 },
+    { name: "toolImage", maxCount: 8 },
     { name: "toolVideo", maxCount: 1 },
   ]),
   toolController.updateTool

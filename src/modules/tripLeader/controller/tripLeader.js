@@ -197,9 +197,6 @@ export const completeProfile = asyncHandler(async (req, res, next) => {
   });
 });
 
-
-
-
 export const start = asyncHandler(async (req, res, next) => {
   const { tripId } = req.params;
 
