@@ -677,9 +677,6 @@ export const getCreatedActivities = asyncHandler(async (req, res, next) => {
     .select("_id type code") // Only select necessary fields
     .lean(); // Use lean to get plain JavaScript objects
 
-  // Debug log to check fetched tools
-  console.log("Created Tools:", createdTools);
-
   // Create a map to store tools grouped by their type
   const toolsByType = {};
 
@@ -689,11 +686,8 @@ export const getCreatedActivities = asyncHandler(async (req, res, next) => {
     // Find the predefined type matching the tool's type
     const predefinedType = predefinedTypes.find(type => type.id === toolTypeId);
 
-    // Debug log for unknown types
-    if (!predefinedType) {
-      console.log(`Unknown Type for Tool ID: ${tool._id}, Type ID: ${toolTypeId}`);
-      return; // Skip this tool if the type is unknown
-    }
+    // Skip this tool if the type is unknown
+    if (!predefinedType) return;
 
     // Prepare to group by type
     const typeKey = predefinedType.id;
@@ -702,6 +696,7 @@ export const getCreatedActivities = asyncHandler(async (req, res, next) => {
     // Initialize the type grouping if not exists
     if (!toolsByType[typeKey]) {
       toolsByType[typeKey] = {
+        typeId: typeKey, // Include typeId
         typeName,
         ids: [],
         codes: [],
@@ -711,9 +706,6 @@ export const getCreatedActivities = asyncHandler(async (req, res, next) => {
     toolsByType[typeKey].ids.push(tool._id);
     toolsByType[typeKey].codes.push(tool.code);
   });
-
-  // Debug log to check grouped tools
-  console.log("Grouped Tools by Type:", toolsByType);
 
   // Fetch created places
   const createdPlaces = await placesModel
@@ -733,6 +725,7 @@ export const getCreatedActivities = asyncHandler(async (req, res, next) => {
 
     if (!placesByType[typeKey]) {
       placesByType[typeKey] = {
+        typeId: typeKey, // Include typeId
         typeName,
         ids: [],
         codes: [],
@@ -753,6 +746,7 @@ export const getCreatedActivities = asyncHandler(async (req, res, next) => {
     places: placesWithDetails,
   });
 });
+
  
 
 export const getActivity = asyncHandler(async (req, res, next) => {
