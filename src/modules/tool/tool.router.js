@@ -59,5 +59,5 @@ router.patch(
   isAuthorized("owner"),
   toolController.ExaminationDate
 );
-router.get("/getUpdatedTools",auth,toolController.getUpdatedTools)
+router.get("/getUpdatedTools", auth, toolController.getUpdatedTools);
 export default router;
