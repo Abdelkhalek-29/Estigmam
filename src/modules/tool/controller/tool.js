@@ -14,7 +14,8 @@ const predefinedTypes = [
 ];
 
 export const addTool = asyncHandler(async (req, res, next) => {
-  const { name, type, location, portName, licenseEndDate, licenseNunmber } = req.body;
+  const { name, type, location, portName, licenseEndDate, licenseNunmber } =
+    req.body;
 
   /*const typesOfPlaces = await typesOfPlacesModel.findById(type);
   if (!typesOfPlaces) {
@@ -27,10 +28,13 @@ export const addTool = asyncHandler(async (req, res, next) => {
   let toolVideoResult = null;
 
   if (req.files.license && req.files.license.length > 0) {
-    licenseFileResult = await cloudinary.uploader.upload(req.files.license[0].path, {
-      resource_type: "raw",
-      folder: `${process.env.FOLDER_CLOUDINARY}/license/${ownerId}/LicenseFile`,
-    });
+    licenseFileResult = await cloudinary.uploader.upload(
+      req.files.license[0].path,
+      {
+        resource_type: "raw",
+        folder: `${process.env.FOLDER_CLOUDINARY}/license/${ownerId}/LicenseFile`,
+      }
+    );
   }
 
   if (req.files.toolImages && req.files.toolImages.length > 0) {
@@ -43,10 +47,13 @@ export const addTool = asyncHandler(async (req, res, next) => {
   }
 
   if (req.files.toolVideo && req.files.toolVideo.length > 0) {
-    toolVideoResult = await cloudinary.uploader.upload(req.files.toolVideo[0].path, {
-      resource_type: "video",
-      folder: `${process.env.FOLDER_CLOUDINARY}/toolVideos/${ownerId}/toolVideo`,
-    });
+    toolVideoResult = await cloudinary.uploader.upload(
+      req.files.toolVideo[0].path,
+      {
+        resource_type: "video",
+        folder: `${process.env.FOLDER_CLOUDINARY}/toolVideos/${ownerId}/toolVideo`,
+      }
+    );
   }
 
   const newTool = new toolModel({
@@ -82,7 +89,9 @@ export const addTool = asyncHandler(async (req, res, next) => {
 
   await newTool.save();
 
-  const populatedTool = await toolModel.findById(newTool._id).populate("type", "name");
+  const populatedTool = await toolModel
+    .findById(newTool._id)
+    .populate("type", "name");
 
   res.status(201).json({
     success: true,
@@ -146,7 +155,7 @@ export const updateTool = asyncHandler(async (req, res, next) => {
 
   // Update other fields from req.body
   const updateFields = req.body;
-  
+
   Object.keys(updateFields).forEach((key) => {
     if (updateFields[key] !== undefined) {
       tool[key] = updateFields[key];
@@ -249,8 +258,8 @@ export const getToolById = asyncHandler(async (req, res) => {
 });
 
 export const ExaminationDate = asyncHandler(async (req, res, next) => {
-  const ownerId = req.owner._id; 
-  const { Examination_date: date } = req.body; 
+  const ownerId = req.owner._id;
+  const { Examination_date: date } = req.body;
 
   const tools = await toolModel.find({ createBy: ownerId });
 
@@ -260,25 +269,26 @@ export const ExaminationDate = asyncHandler(async (req, res, next) => {
 
   for (let tool of tools) {
     tool.Examination_date = date;
-    await tool.save(); 
+    await tool.save();
   }
 
   const owner = await OwnerModel.findById(ownerId);
   if (owner) {
-    owner.isDate = true; 
-    await owner.save(); 
+    owner.isDate = true;
+    await owner.save();
   }
 
   res.status(200).json({
     success: true,
     status: 200,
-    message: "Examination dates updated successfully for all tools, isDate set to true",
+    message:
+      "Examination dates updated successfully for all tools, isDate set to true",
   });
 });
 
-export const getUpdatedTools =asyncHandler( async (req, res) => {
-  const ownerId = req.owner?.id; 
-  const language = req.headers["accept-language"] || "en"; 
+export const getUpdatedTools = asyncHandler(async (req, res) => {
+  const ownerId = req.owner?.id;
+  const language = req.headers["accept-language"] || "en";
 
   if (!ownerId) {
     return res.status(403).json({ message: "Unauthorized" });
@@ -286,17 +296,19 @@ export const getUpdatedTools =asyncHandler( async (req, res) => {
 
   const tools = await toolModel
     .find({ createBy: ownerId, isUpdated: true })
-    .select("name type section licensePdf licenseNunmber licenseEndDate toolImage toolVideo location portName Examination_date details activityId code isUpdated");
+    .select(
+      "name type section licensePdf licenseNunmber licenseEndDate toolImage toolVideo location portName Examination_date details activityId code isUpdated"
+    );
 
-  const formattedTools = tools.map(tool => ({
+  const formattedTools = tools.map((tool) => ({
     ...tool._doc,
     section: {
-      name: tool.section[language === "ar" ? "name_ar" : "name_en"], 
+      name: tool.section[language === "ar" ? "name_ar" : "name_en"],
     },
   }));
 
   return res.status(200).json({
     success: true,
-    tools: formattedTools, 
+    tools: formattedTools,
   });
 });
