@@ -724,7 +724,7 @@ export const getCreatedActivities = asyncHandler(async (req, res, next) => {
 
   // Fetch created places
   const createdPlaces = await placesModel
-    .find({ createBy: userId }) // All places created by the owner
+    .find({ createBy: userId, isUpdated: false }) // All places created by the owner
     .populate({
       path: "type", // Populate the type
       select: `${language === "ar" ? "name_ar" : "name_en"}`,
@@ -751,7 +751,6 @@ export const getCreatedActivities = asyncHandler(async (req, res, next) => {
     placesByType[typeKey].codes.push(place.code);
   });
 
-  // Prepare final response
   const toolsWithDetails = Object.values(toolsByType);
   const placesWithDetails = Object.values(placesByType);
 
