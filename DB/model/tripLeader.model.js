@@ -111,7 +111,7 @@ const tripLeaderSchema = new Schema(
     section:{
       type:Types.ObjectId
       
-    }
+    },
   },
   { timestamps: true }
 );

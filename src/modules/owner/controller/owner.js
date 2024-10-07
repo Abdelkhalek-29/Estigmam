@@ -167,6 +167,8 @@ export const register = asyncHandler(async (req, res, next) => {
       profileImage: user.profileImage,
       isDate: user.isDate,
       id: user._id,
+      ownerInfo:user.ownerInfo,
+      addLeader:user.addLeader
     },
   });
 });
@@ -177,12 +179,14 @@ export const login = asyncHandler(async (req, res, next) => {
 
   user = await OwnerModel.findOne({
     $or: [{ phone }, { phoneWithCode: phone }],
-  }).populate('country', 'name image').populate('city', 'name'); 
+  })
+    .populate("country", "name image")
+    .populate("city", "name");
 
   if (user) {
     role = "Owner";
   } else {
-    user = await tripLeaderModel.findOne({ phone }).populate('country', 'name').populate('city', 'name');
+    user = await tripLeaderModel.findOne({ phone });
 
     if (user) {
       role = "TripLeader";
@@ -202,6 +206,7 @@ export const login = asyncHandler(async (req, res, next) => {
     return next(new Error("Invalid phone or password", { status: 400 }));
   }
 
+  // Generate token
   const token = jwt.sign(
     { id: user._id, phone: user.phone, role },
     process.env.TOKEN_SIGNATURE
@@ -213,35 +218,43 @@ export const login = asyncHandler(async (req, res, next) => {
     agent: req.headers["user-agent"],
   });
 
-  user.status = "online";
-  await user.save();
+
+  const responseData = {
+    token,
+    fullName: user.fullName || user.name,
+    nationalID: user.nationalID || user.N_id,
+    email: user.email,
+    phone: user.phone,
+    userName: user.userName,
+    role: user.role,
+    isUpdated: user.isUpdated,
+    profileImage: user.profileImage,
+    isDate: user.isDate,
+    id: user._id,
+
+  };
+
+  if (role === "Owner") {
+    responseData.country = {
+      id: user.country?._id,
+      name: user.country?.name,
+      image: user.country?.image?.url,
+    };
+    responseData.city = {
+      id: user.city?._id,
+      name: user.city?.name,
+    };
+    responseData.ownerInfo = user.ownerInfo;
+    responseData.addLeader = user.addLeader;
+  }
+  if (role === "TripLeader") {
+  }
 
   return res.status(200).json({
     success: true,
     status: 200,
-    message: "login success",
-    data: {
-      token,
-      fullName: user.fullName || user.name,
-      nationalID: user.nationalID || user.N_id,
-      email: user.email,
-      country: {
-        id: user.country._id,
-        name: user.country.name,
-        image:user.country.image.url
-      },
-      city: {
-        id: user.city._id,
-        name: user.city.name,
-      },
-      phone: user.phone,
-      userName: user.userName,
-      role: user.role,
-      isUpdated: user.isUpdated,
-      profileImage: user.profileImage,
-      isDate: user.isDate,
-      id: user._id,
-    },
+    message: "Login successful",
+    data: responseData,
   });
 });
 
@@ -409,7 +422,7 @@ export const complete = asyncHandler(async (req, res, next) => {
   owner.phone = phone || owner.phone;
   owner.country = country || owner.country;
   owner.city = city || owner.city;
-
+  owner.ownerInfo=true
   if (req.files) {
     if (req.files.IDPhoto && req.files.IDPhoto.length > 0) {
       const idFileResult = await cloudinary.uploader.upload(

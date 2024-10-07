@@ -335,6 +335,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
   if (!chatGroup) {
     chatGroup = await GroupChat.create({
       tripId,
+      groupName:"test group chat",
       participants: [userId],
       lastMessage: {
         text: "Welcome to the trip!",

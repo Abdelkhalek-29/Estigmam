@@ -64,10 +64,15 @@ router.patch(
   validation(validators.tripId),
   tripLeaderController.cancelTrip
 );
-export default router;
 
 router.get(
   "/rateDetails/:tripId",
   validation(validators.tripId),
   tripLeaderController.rateDetails
 );
+
+router.post("/deActive/:id",auth,tripLeaderController.deactivateTripLeader)
+router.post("/active/:id",auth,tripLeaderController.activateTripLeader)
+router.delete("/:id",auth,tripLeaderController.deleteTripLeader)
+
+export default router;

@@ -49,11 +49,6 @@ const OwnerSchema = new Schema(
     },
     phone: { type: String, required: true, unique: true },
     phoneWithCode: { type: String },
-    status: {
-      type: String,
-      enum: ["online", "offline"],
-      default: "offline",
-    },
     role: {
       type: String,
       enum: ["user", "admin", "owner", "tripLeader"],
@@ -112,6 +107,14 @@ const OwnerSchema = new Schema(
       default:false
     },
     isDate:{
+      type:Boolean,
+      default:false
+    },
+    ownerInfo:{
+      type:Boolean,
+      default:false
+    },
+    addLeader:{
       type:Boolean,
       default:false
     }

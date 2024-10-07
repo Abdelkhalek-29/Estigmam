@@ -8,15 +8,7 @@ import OwnerModel from "../../../../DB/model/Owner.model .js";
 
 export const addTripLeader = asyncHandler(async (req, res, next) => {
   const { phone } = req.body;
-
-  if (!Array.isArray(phone) || phone.length === 0) {
-    return next(
-      new Error("The 'phone' field must be a non-empty array.", {
-        status: 400,
-      })
-    );
-  }
-
+  const ownerId = req.owner._id;
   const existingLeaders = await tripLeaderModel.find({ phone: { $in: phone } });
   const existingPhones = existingLeaders.map((leader) => leader.phone);
 
@@ -38,6 +30,7 @@ export const addTripLeader = asyncHandler(async (req, res, next) => {
   }));
 
   const createdLeaders = await tripLeaderModel.insertMany(newLeaders);
+  await OwnerModel.findByIdAndUpdate(ownerId, { addLeader: true });
 
   return res.status(201).json({
     success: true,
@@ -315,5 +308,78 @@ export const rateDetails = asyncHandler(async (req, res, next) => {
     averageRating: trip.averageRating,
     ratingsLength: ratings.length,
     ratings,
+  });
+});
+
+export const deactivateTripLeader = asyncHandler(async (req, res, next) => {
+  const { id } = req.params; 
+  const ownerId = req.owner._id; 
+
+  const tripLeader = await tripLeaderModel.findById(id);
+  if (!tripLeader) {
+    return next(new Error("TripLeader not found", { status: 404 }));
+  }
+
+  if (tripLeader.ownerId.toString() !== ownerId.toString()) {
+    return next(new Error("Unauthorized", { status: 403 }));
+  }
+
+  if (tripLeader.status === "inactive") {
+    return res.status(400).json({ message: "TripLeader is already inactive" });
+  }
+
+  tripLeader.status = "inactive";
+  await tripLeader.save();
+
+  res.status(200).json({
+    success: true,
+    message: "TripLeader status changed to inactive",
+  });
+});
+
+export const activateTripLeader = asyncHandler(async (req, res, next) => {
+  const { id } = req.params; 
+  const ownerId = req.owner._id; 
+
+  const tripLeader = await tripLeaderModel.findById(id);
+  if (!tripLeader) {
+    return next(new Error("TripLeader not found", { status: 404 }));
+  }
+
+  if (tripLeader.ownerId.toString() !== ownerId.toString()) {
+    return next(new Error("Unauthorized", { status: 403 }));
+  }
+
+  if (tripLeader.status === "active") {
+    return res.status(400).json({ message: "TripLeader is already active" });
+  }
+
+  tripLeader.status = "active";
+  await tripLeader.save();
+
+  res.status(200).json({
+    success: true,
+    message: "TripLeader status changed to active",
+  });
+});
+
+export const deleteTripLeader = asyncHandler(async (req, res, next) => {
+  const { id } = req.params; 
+  const ownerId = req.owner._id; 
+
+  const tripLeader = await tripLeaderModel.findById(id);
+  if (!tripLeader) {
+    return next(new Error("TripLeader not found", { status: 404 }));
+  }
+
+  if (tripLeader.ownerId.toString() !== ownerId.toString()) {
+    return next(new Error("Unauthorized", { status: 403 }));
+  }
+
+  await tripLeader.remove();
+
+  res.status(200).json({
+    success: true,
+    message: "TripLeader deleted successfully",
   });
 });

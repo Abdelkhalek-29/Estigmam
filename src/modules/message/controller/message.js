@@ -125,12 +125,10 @@ export const getMessages = asyncHandler(async (req, res, next) => {
     : req.tripLeader._id;
 
   if (!conversationId && !otherUserId) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "Conversation ID or User ID is required",
-      });
+    return res.status(400).json({
+      success: false,
+      message: "Conversation ID or User ID is required",
+    });
   }
 
   let conversation;
@@ -139,18 +137,14 @@ export const getMessages = asyncHandler(async (req, res, next) => {
     conversation = await conversationModel.findById(conversationId);
 
     if (!conversation) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Conversation not found" });
+      return res.status(404).json({ success: false, message: "Conversation not found" });
     }
 
     if (conversation.isGroup && !conversation.participants.includes(userId)) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "User is not a participant of this group chat",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "User is not a participant of this group chat",
+      });
     }
   } else if (otherUserId) {
     conversation = await conversationModel.findOne({
@@ -159,9 +153,7 @@ export const getMessages = asyncHandler(async (req, res, next) => {
     });
 
     if (!conversation) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Private conversation not found" });
+      return res.status(404).json({ success: false, message: "Private conversation not found" });
     }
   }
 
@@ -177,10 +169,21 @@ export const getMessages = asyncHandler(async (req, res, next) => {
     userDetails = await getUserDetails(otherUserId);
   }
 
-  // Format the response
   return res.status(200).json({
     success: true,
-    user: userDetails,
+    conversation: {
+      _id: conversation._id,
+      participants: userDetails, 
+      createdAt: conversation.createdAt,
+      updatedAt: conversation.updatedAt,
+      lastMessage: conversation.lastMessage
+        ? {
+            senderId: conversation.lastMessage.senderId,
+            text: conversation.lastMessage.text,
+            seen: conversation.lastMessage.seen,
+          }
+        : null,
+    },
     messages: messages.map((message) => ({
       _id: message._id,
       conversationId: message.conversationId,
@@ -192,7 +195,6 @@ export const getMessages = asyncHandler(async (req, res, next) => {
     })),
   });
 });
-
 const getParticipantsDetails = async (participantIds) => {
   const userDetails = await userModel
     .find({ _id: { $in: participantIds } })
