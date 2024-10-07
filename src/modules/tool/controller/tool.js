@@ -286,7 +286,7 @@ export const getUpdatedTools =asyncHandler( async (req, res) => {
 
   const tools = await toolModel
     .find({ createBy: ownerId, isUpdated: true })
-    .select("name type section licensePd licenseNunmber licenseEndDate toolImage toolVideo location portName Examination_date details activityId code isUpdated");
+    .select("name type section licensePdf licenseNunmber licenseEndDate toolImage toolVideo location portName Examination_date details activityId code isUpdated");
 
   const formattedTools = tools.map(tool => ({
     ...tool._doc,
