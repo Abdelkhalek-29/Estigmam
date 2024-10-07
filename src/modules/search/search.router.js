@@ -16,14 +16,18 @@ router.post(
 );
 router.get("/recentSearches", auth, searchController.getRecentSearches);
 
-// Map user 
+// Map user
 // Search berth by name
-router.get("/searchBerth",auth, searchController.searchBerth);
+router.get("/searchBerth", auth, searchController.searchBerth);
 
 // Save search result
-router.post("/saveSearch/:berthId",auth,searchController.saveSearchResultBerth);
+router.post(
+  "/saveSearch/:berthId",
+  auth,
+  searchController.saveSearchResultBerth
+);
 
 // Get newest 4 search results
-router.get("/history",auth, searchController.getSearchHistory);
+router.get("/history", auth, searchController.getSearchHistory);
 
 export default router;
