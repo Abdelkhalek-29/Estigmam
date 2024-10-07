@@ -212,16 +212,13 @@ export const deletePlace = asyncHandler(async (req, res, next) => {
 });
 
 export const getUpdatedPlaces = asyncHandler(async (req, res) => {
-  const ownerId = req.owner?.id; // Safely access owner id
+  const ownerId = req.owner?.id;
   const language = req.headers["accept-language"] || "en";
 
   if (!ownerId) {
     return res.status(403).json({ message: "Unauthorized" });
   }
 
-  console.log("Owner ID:", ownerId); // Log ownerId for debugging
-
-  // Fetch updated places for the owner
   const places = await placesModel
     .find({ createBy: ownerId, isUpdated: true })
     .populate({
@@ -230,19 +227,18 @@ export const getUpdatedPlaces = asyncHandler(async (req, res) => {
     })
     .select("name type location description LicenseFile licenseNumber ExpiryDate images video code isUpdated")
     .catch(err => {
-      console.error("Database query failed:", err); // Log the error
-      return res.status(500).json({ message: "Internal server error" }); // Handle error response
+      console.error("Database query failed:", err); 
+      return res.status(500).json({ message: "Internal server error" }); 
     });
 
-  // Check if places found
   if (!places || places.length === 0) {
     return res.status(404).json({ message: "No updated places found for this owner" });
   }
 
-  // Format places for response
   const formattedPlaces = places.map(place => ({
     ...place._doc,
     type: {
+      id: place.type?._id, 
       name: place.type[language === "ar" ? "name_ar" : "name_en"],
     },
   }));
