@@ -230,11 +230,6 @@ export const getUpdatedPlaces = asyncHandler(async (req, res) => {
       console.error("Database query failed:", err); 
       return res.status(500).json({ message: "Internal server error" }); 
     });
-
-  if (!places || places.length === 0) {
-    return res.status(404).json({ message: "No updated places found for this owner" });
-  }
-
   const formattedPlaces = places.map(place => ({
     ...place._doc,
     type: {
