@@ -28,7 +28,7 @@ router.post(
 );
 router.get("/", auth, isAuthorized("owner"), placesController.getAllPlaces);
 router.get("/:placeId", auth, isAuthorized("owner"), placesController.getPlace);
-router.put(
+router.patch(
   "/:placeId",
   auth,
   isAuthorized("owner"),
