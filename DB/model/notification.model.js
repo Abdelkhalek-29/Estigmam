@@ -10,16 +10,6 @@ const notificationSchema = new Schema(
       type: String,
       required: true,
     },
-    sender: {
-      type: Types.ObjectId,
-      refPath: 'senderModel',
-      required: true
-    },
-    senderModel: {
-      type: String,
-      required: true,
-      enum: ['User', 'Owner', 'TripLeader'], 
-    },
     receiver: {
       type: Types.ObjectId,
       refPath: 'receiverModel',
@@ -41,6 +31,10 @@ const notificationSchema = new Schema(
     isRead: {
       type: Boolean,
       default: false,
+    },
+    placeId: {
+      type: Types.ObjectId,
+      ref: "Place",
     },
   },
   { timestamps: true }
