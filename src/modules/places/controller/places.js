@@ -189,28 +189,38 @@ export const getPlace = asyncHandler(async (req, res, next) => {
   });
 });
 export const deletePlace = asyncHandler(async (req, res, next) => {
-  const place = await placesModel.findOneAndDelete({
-    _id: req.params.placeId,
-    createBy: req.owner._id,
-  });
-  if (!place) {
-    return next(new Error("place Not Found!", { cause: 404 }));
-  }
-  await cloudinary.uploader.destroy(place.LicenseFile.id);
-  place.images.map(async (image) => {
-    await cloudinary.uploader.destroy(image.id);
-  });
-  await cloudinary.uploader.destroy(place.video.id, {
-    resource_type: "video",
-  });
+    const place = await placesModel.findOneAndDelete({
+      _id: req.params.placeId,
+      createBy: req.owner._id,
+    });
 
-  return res.status(200).json({
-    success: true,
-    status: 200,
-    message: "place deleted",
-  });
-});
+    if (!place) {
+      return res.status(404).json({
+        success: false,
+        message: "Place not found!",
+      });
+    }
+    if (place.LicenseFile && place.LicenseFile.id) {
+      await cloudinary.uploader.destroy(place.LicenseFile.id);
+    }
 
+    if (place.images && Array.isArray(place.images)) {
+      for (const image of place.images) {
+        if (image.id) {
+          await cloudinary.uploader.destroy(image.id);
+        }
+      }
+    }
+    if (place.video && place.video.id) {
+      await cloudinary.uploader.destroy(place.video.id, {
+        resource_type: "video",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Place deleted successfully",
+    })})
 export const getUpdatedPlaces = asyncHandler(async (req, res) => {
   const ownerId = req.owner?.id;
   const language = req.headers["accept-language"] || "en";
