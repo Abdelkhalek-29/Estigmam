@@ -121,7 +121,7 @@ export const updateTripLeaderPassword = asyncHandler(async (req, res, next) => {
 });
 
 export const completeProfile = asyncHandler(async (req, res, next) => {
-  const { name,N_id,phone,userName,license, expirationDate, createTrip, section } = req.body;
+  const { name, N_id, phone, userName, license, expirationDate, createTrip, section } = req.body;
   const tripLeaderId = req.tripLeader._id; 
 
   const tripLeader = await tripLeaderModel.findById(tripLeaderId);
@@ -166,29 +166,40 @@ export const completeProfile = asyncHandler(async (req, res, next) => {
     }
   }
 
-  tripLeader.name=name||tripLeader.name
-  tripLeader.userName=userName||tripLeader.userName
-  tripLeader.phone=phone||tripLeader.phone
-  tripLeader.N_id=N_id||tripLeader.N_id
+  tripLeader.name = name || tripLeader.name;
+  tripLeader.userName = userName || tripLeader.userName;
+  tripLeader.phone = phone || tripLeader.phone;
+  tripLeader.N_id = N_id || tripLeader.N_id;
   tripLeader.license = license || tripLeader.license;
   tripLeader.expirationDate = expirationDate || tripLeader.expirationDate;
   tripLeader.createTrip = createTrip || tripLeader.createTrip;
   tripLeader.section = section || tripLeader.section;
-
   tripLeader.IDPhoto = images.IDPhoto || tripLeader.IDPhoto;
   tripLeader.FictionAndSimile = images.FictionAndSimile || tripLeader.FictionAndSimile;
   tripLeader.MaintenanceGuarantee = images.MaintenanceGuarantee || tripLeader.MaintenanceGuarantee;
   tripLeader.DrugAnalysis = images.DrugAnalysis || tripLeader.DrugAnalysis;
   tripLeader.profileImage = images.profileImage || tripLeader.profileImage;
 
-  await tripLeader.save();
+  tripLeader.status = "active"; // Set status to a valid value
 
-  return res.status(200).json({
-    success: true,
-    message: "Trip Leader profile updated successfully",
-    data: tripLeader,
+    await tripLeader.save();
+    return res.status(200).json({
+      success: true,
+      message: "Trip Leader profile updated successfully",
+      data: {
+        fullName: tripLeader.name,
+        nationalID: tripLeader.N_id,
+        phone: tripLeader.phone,
+        userName: tripLeader.userName,
+        role: tripLeader.role,
+        isUpdated: tripLeader.isUpdated,
+        profileImage: tripLeader.profileImage,
+        isDate: tripLeader.isDate,
+        isUpdated:tripLeader.isUpdated,
+        id: tripLeader._id,
+      },
+    });
   });
-});
 
 export const start = asyncHandler(async (req, res, next) => {
   const { tripId } = req.params;
