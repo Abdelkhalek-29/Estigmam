@@ -83,16 +83,16 @@ export const updatePlace = asyncHandler(async (req, res, next) => {
   if (req.body.name) {
     place.name = req.body.name;
   }
-  
+
   if (req.body.type) {
     const typesOfPlaces = await typesOfPlacesModel.findOne({
       _id: req.body.type,
     });
-    
+
     if (!typesOfPlaces) {
       return next(new Error("typesOfPlaces not found", { cause: 404 }));
     }
-    
+
     place.type = req.body.type;
   }
 
@@ -107,12 +107,15 @@ export const updatePlace = asyncHandler(async (req, res, next) => {
   if (req.body.ExpiryDate) {
     place.ExpiryDate = req.body.ExpiryDate;
   }
+  if (req.body.description) {
+    place.description = req.body.description;
+  }
 
   if (req.files.license && place.LicenseFile) {
     const { secure_url, public_id } = await cloudinary.uploader.upload(
       req.files.license[0].path,
       {
-        public_id: place.LicenseFile.id, 
+        public_id: place.LicenseFile.id,
       }
     );
     place.LicenseFile.url = secure_url;
@@ -125,11 +128,11 @@ export const updatePlace = asyncHandler(async (req, res, next) => {
       const { secure_url, public_id } = await cloudinary.uploader.upload(
         file.path,
         {
-          public_id: place.images[i]?.id || undefined, 
+          public_id: place.images[i]?.id || undefined,
         }
       );
       images.push({ url: secure_url, id: public_id });
-      i++; 
+      i++;
     }
     place.images = images;
   }
@@ -138,7 +141,7 @@ export const updatePlace = asyncHandler(async (req, res, next) => {
       req.files.placeVideo[0].path,
       {
         resource_type: "video",
-        public_id: place.video.id, 
+        public_id: place.video.id,
       }
     );
     place.video.url = secure_url;
@@ -189,38 +192,39 @@ export const getPlace = asyncHandler(async (req, res, next) => {
   });
 });
 export const deletePlace = asyncHandler(async (req, res, next) => {
-    const place = await placesModel.findOneAndDelete({
-      _id: req.params.placeId,
-      createBy: req.owner._id,
+  const place = await placesModel.findOneAndDelete({
+    _id: req.params.placeId,
+    createBy: req.owner._id,
+  });
+
+  if (!place) {
+    return res.status(404).json({
+      success: false,
+      message: "Place not found!",
     });
+  }
+  if (place.LicenseFile && place.LicenseFile.id) {
+    await cloudinary.uploader.destroy(place.LicenseFile.id);
+  }
 
-    if (!place) {
-      return res.status(404).json({
-        success: false,
-        message: "Place not found!",
-      });
-    }
-    if (place.LicenseFile && place.LicenseFile.id) {
-      await cloudinary.uploader.destroy(place.LicenseFile.id);
-    }
-
-    if (place.images && Array.isArray(place.images)) {
-      for (const image of place.images) {
-        if (image.id) {
-          await cloudinary.uploader.destroy(image.id);
-        }
+  if (place.images && Array.isArray(place.images)) {
+    for (const image of place.images) {
+      if (image.id) {
+        await cloudinary.uploader.destroy(image.id);
       }
     }
-    if (place.video && place.video.id) {
-      await cloudinary.uploader.destroy(place.video.id, {
-        resource_type: "video",
-      });
-    }
+  }
+  if (place.video && place.video.id) {
+    await cloudinary.uploader.destroy(place.video.id, {
+      resource_type: "video",
+    });
+  }
 
-    return res.status(200).json({
-      success: true,
-      message: "Place deleted successfully",
-    })})
+  return res.status(200).json({
+    success: true,
+    message: "Place deleted successfully",
+  });
+});
 export const getUpdatedPlaces = asyncHandler(async (req, res) => {
   const ownerId = req.owner?.id;
   const language = req.headers["accept-language"] || "en";
@@ -235,15 +239,17 @@ export const getUpdatedPlaces = asyncHandler(async (req, res) => {
       path: "type",
       select: `${language === "ar" ? "name_ar" : "name_en"}`,
     })
-    .select("name type location description LicenseFile licenseNumber ExpiryDate images video code isUpdated")
-    .catch(err => {
-      console.error("Database query failed:", err); 
-      return res.status(500).json({ message: "Internal server error" }); 
+    .select(
+      "name type location description LicenseFile licenseNumber ExpiryDate images video code isUpdated"
+    )
+    .catch((err) => {
+      console.error("Database query failed:", err);
+      return res.status(500).json({ message: "Internal server error" });
     });
-  const formattedPlaces = places.map(place => ({
+  const formattedPlaces = places.map((place) => ({
     ...place._doc,
     type: {
-      id: place.type?._id, 
+      id: place.type?._id,
       name: place.type[language === "ar" ? "name_ar" : "name_en"],
     },
   }));
