@@ -29,7 +29,11 @@ const berthSchema = new Schema(
             type: String,
             required: true,
           },
-        },]
+        },],
+        details:{
+          type:String,
+          required:true
+        }
   },
   { timestamps: true }
 );

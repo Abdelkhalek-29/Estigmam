@@ -13,7 +13,7 @@ const uploadImageToCloudinary = async (file) => {
 };
 
 export const addBerth = asyncHandler(async (req, res, next) => {
-  const { name, cityId, countryId, location } = req.body;
+  const { name, cityId, countryId, location ,details} = req.body;
 
   const city = await cityModel.findById(cityId);
   if (!city) {
@@ -43,6 +43,7 @@ export const addBerth = asyncHandler(async (req, res, next) => {
     countryId,
     location,
     images, 
+    details
   });
   return res.status(201).json({
     success: true,
@@ -60,7 +61,7 @@ export const getAllBerth = asyncHandler(async (req, res, next) => {
   }
   const berth = await berthModel
     .find({ cityId })
-    .select("name -_id");
+    .select("name -_id details");
   if (!berth) {
     return next(new Error("Berth Not Found for this city!", { cause: 404 }));
   }
@@ -74,7 +75,7 @@ export const getAllBerth = asyncHandler(async (req, res, next) => {
 });
 
 export const getBerths=asyncHandler(async(req,res,next)=>{
- const berths=await berthModel.find().select("name _id location")
+ const berths=await berthModel.find().select("name _id location details")
 
   return res.status(200).json({
     success: true,
@@ -118,7 +119,7 @@ export const nearest=asyncHandler(async(req,res,next)=>{
   
     const berths = await berthModel
       .find(filter)
-      .select("_id name location countryId images")
+      .select("_id name location countryId images details")
       .populate({ path: "countryId", select: "name" });
   
     if (!berths.length) {
@@ -138,6 +139,7 @@ export const nearest=asyncHandler(async(req,res,next)=>{
           country: berth.countryId.name,
           upcomingTripsCount: tripCount,
           images: berth.images,
+          details:berth.details
         };
       })
     );

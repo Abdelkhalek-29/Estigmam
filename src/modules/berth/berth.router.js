@@ -20,7 +20,7 @@ router.get("/getBerths", berthController.getBerths);
 router.post("/nearest-berth", berthController.nearest);
 router.get(
   "/tripsCounter",
-  auth,
+  //auth,
   berthController.getUpcomingTripsCountPerBerth
 );
 export default router;
