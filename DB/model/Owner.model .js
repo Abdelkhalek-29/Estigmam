@@ -120,6 +120,10 @@ const OwnerSchema = new Schema(
     addLeader:{
       type:Boolean,
       default:false
+    },
+    registerAgreement:{
+      type:Boolean,
+      default:false
     }
   },
   

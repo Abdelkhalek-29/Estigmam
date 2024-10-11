@@ -169,7 +169,8 @@ export const register = asyncHandler(async (req, res, next) => {
       id: user._id,
       ownerInfo:user.ownerInfo,
       addLeader:user.addLeader,
-      infoUpdate:user.infoUpdate
+      infoUpdate:user.infoUpdate,
+      registerAgreement:user.registerAgreement
     },
   });
 });
@@ -247,6 +248,7 @@ export const login = asyncHandler(async (req, res, next) => {
     };
     responseData.ownerInfo = user.ownerInfo;
     responseData.addLeader = user.addLeader;
+    responseData.registerAgreement=user.registerAgreement
   }
   if (role === "TripLeader") {
     responseData.infoUpdate=user.infoUpdate
@@ -946,5 +948,23 @@ export const getOwnerCode = asyncHandler(async (req, res, next) => {
   });
 });
 
+export const registerAgreement = asyncHandler(async (req, res, next) => {
+  const ownerId = req.owner._id;
+  const owner = await OwnerModel.findById(ownerId);
 
+  if (!owner) {
+    return res.status(404).json({
+      success: false,
+      message: "Owner not found",
+    });
+  }
 
+  owner.registerAgreement = true;
+
+  await owner.save();
+
+  return res.status(200).json({
+    success: true,
+    message: "Agreement registered successfully.",
+  });
+});
