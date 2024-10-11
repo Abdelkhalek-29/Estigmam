@@ -414,11 +414,11 @@ export const VerifyCode = asyncHandler(async (req, res, next) => {
   });
 });
 
+
 export const complete = asyncHandler(async (req, res, next) => {
   const id  = req.owner._id; // Assume you're getting the owner's ID from the URL
-  const { fullName, email, phone, countryId, cityId } = req.body;
+  const { fullName, email, nationalID, phone, country, city, IDExpireDate } = req.body;
 
-  // Find the owner by ID
   const owner = await OwnerModel.findById(id)
     .populate("country", "name image")
     .populate("city", "name");
@@ -426,20 +426,97 @@ export const complete = asyncHandler(async (req, res, next) => {
   if (!owner) {
     return next(new Error("Owner not found", { status: 404 }));
   }
+
   owner.fullName = fullName || owner.fullName;
   owner.email = email || owner.email;
+  owner.nationalID = nationalID || owner.nationalID;
   owner.phone = phone || owner.phone;
   
-  if (countryId) {
-    owner.countryId = countryId;
-  }
-  
-  if (cityId) {
-    owner.cityId = cityId;
+  if (country) {
+    owner.countryId = country;
+    }
+    if (city) {
+      owner.cityId = city;
+    }  
+  owner.IDExpireDate = IDExpireDate || owner.IDExpireDate;
+  owner.ownerInfo = true;
+
+  // Handle file uploads
+  if (req.files) {
+    const fileUploadPromises = [];
+
+    if (req.files.IDPhoto && req.files.IDPhoto.length > 0) {
+      const idPhotoUpload = cloudinary.uploader.upload(req.files.IDPhoto[0].path, {
+        resource_type: "raw",
+        folder: `${process.env.FOLDER_CLOUDINARY}/owner/${owner._id}/IDPhotoFile`,
+      }).then((result) => {
+        owner.IDPhoto = {
+          url: result.secure_url,
+          id: result.public_id,
+        };
+      });
+      fileUploadPromises.push(idPhotoUpload);
+    }
+
+    if (req.files.FictionAndSimile && req.files.FictionAndSimile.length > 0) {
+      const fictionUpload = cloudinary.uploader.upload(req.files.FictionAndSimile[0].path, {
+        resource_type: "raw",
+        folder: `${process.env.FOLDER_CLOUDINARY}/owner/${owner._id}/FictionAndSimileFile`,
+      }).then((result) => {
+        owner.FictionAndSimile = {
+          url: result.secure_url,
+          id: result.public_id,
+        };
+      });
+      fileUploadPromises.push(fictionUpload);
+    }
+
+    if (req.files.MaintenanceGuarantee && req.files.MaintenanceGuarantee.length > 0) {
+      const maintenanceUpload = cloudinary.uploader.upload(req.files.MaintenanceGuarantee[0].path, {
+        resource_type: "raw",
+        folder: `${process.env.FOLDER_CLOUDINARY}/owner/${owner._id}/MaintenanceGuaranteeFile`,
+      }).then((result) => {
+        owner.MaintenanceGuarantee = {
+          url: result.secure_url,
+          id: result.public_id,
+        };
+      });
+      fileUploadPromises.push(maintenanceUpload);
+    }
+
+    if (req.files.DrugAnalysis && req.files.DrugAnalysis.length > 0) {
+      const drugAnalysisUpload = cloudinary.uploader.upload(req.files.DrugAnalysis[0].path, {
+        resource_type: "raw",
+        folder: `${process.env.FOLDER_CLOUDINARY}/owner/${owner._id}/DrugAnalysisFile`,
+      }).then((result) => {
+        owner.DrugAnalysis = {
+          url: result.secure_url,
+          id: result.public_id,
+        };
+      });
+      fileUploadPromises.push(drugAnalysisUpload);
+    }
+
+    if (req.files.profileImage && req.files.profileImage.length > 0) {
+      const profileImageUpload = cloudinary.uploader.upload(req.files.profileImage[0].path, {
+        resource_type: "image",
+        folder: `${process.env.FOLDER_CLOUDINARY}/owner/${owner._id}/profileImageFile`,
+      }).then((result) => {
+        owner.profileImage = {
+          url: result.secure_url,
+          id: result.public_id,
+        };
+      });
+      fileUploadPromises.push(profileImageUpload);
+    }
+
+    // Wait for all uploads to finish
+    await Promise.all(fileUploadPromises);
   }
 
+  // Save updated owner details
   await owner.save();
-    // Generate token
+
     const token = jwt.sign(
       { id: owner._id, phone: owner.phone, role:owner.role },
       process.env.TOKEN_SIGNATURE
@@ -449,41 +526,40 @@ export const complete = asyncHandler(async (req, res, next) => {
     user: owner._id,
     agent: req.headers["user-agent"],
   });
+
   const responseData = {
-    success: true,
-    message: "Owner profile updated successfully",
-    data: {
-      token,
-      fullName: owner.fullName,
-      email: owner.email,
-      phone: owner.phone,
-      userName:owner.userName,
-      role: owner.role,
-      nationalID:owner.nationalID,
-      profileImage: owner.profileImage,
-      country: owner.country ? {
-        id: owner.country._id,
-        name: owner.country.name,
-        image: owner.country.image ? owner.country.image.url : null, // Check if image exists
-      } : null, // Set to null if country is undefined
-      city: owner.city ? {
-        id: owner.city._id,
-        name: owner.city.name,
-      } : null, // Set to null if city is undefined
-      id: owner._id,
-      isUpdated:owner.isUpdated,
-      isDate:owner.isDate,
-      ownerInfo:owner.ownerInfo,
-      addLeader:owner.addLeader,
-      registerAgreement:owner.registerAgreement
-    },
+    token, 
+    fullName: owner.fullName,
+    nationalID: owner.nationalID,
+    email: owner.email,
+    userName:owner.userName,
+    country: owner.country ? {
+      id: owner.country._id,
+      name: owner.country.name,
+      image: owner.country.image?.url,
+    } : null,
+    city: owner.city ? {
+      id: owner.city._id,
+      name: owner.city.name,
+    } : null,
+    phone: owner.phone,
+    userName: owner.userName,
+    role: owner.role,
+    isUpdated: owner.isUpdated,
+    profileImage: owner.profileImage,
+    isDate: owner.isDate,
+    id: owner._id,
+    ownerInfo: owner.ownerInfo,
+    addLeader: owner.addLeader,
+    registerAgreement: owner.registerAgreement,
   };
 
-  return res.status(200).json(responseData);
+  return res.status(200).json({
+    success: true,
+    message: "Owner profile updated successfully",
+    data: responseData,
+  });
 });
-
-
-
 
 export const lastTrips = asyncHandler(async (req, res, next) => {
   const language = req.query.lang || req.headers["accept-language"] || "en";
