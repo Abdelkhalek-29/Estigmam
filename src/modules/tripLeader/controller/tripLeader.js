@@ -121,7 +121,7 @@ export const updateTripLeaderPassword = asyncHandler(async (req, res, next) => {
 });
 
 export const completeProfile = asyncHandler(async (req, res, next) => {
-  const { name, N_id, phone, userName, license, expirationDate, createTrip, section } = req.body;
+  const { name, N_id, phone, userName, license, expirationDate, createTrip, typeId } = req.body;
   const tripLeaderId = req.tripLeader._id; 
 
   const tripLeader = await tripLeaderModel.findById(tripLeaderId);
@@ -173,7 +173,7 @@ export const completeProfile = asyncHandler(async (req, res, next) => {
   tripLeader.license = license || tripLeader.license;
   tripLeader.expirationDate = expirationDate || tripLeader.expirationDate;
   tripLeader.createTrip = createTrip || tripLeader.createTrip;
-  tripLeader.section = section || tripLeader.section;
+  tripLeader.typeId = typeId || tripLeader.typeId;
   tripLeader.IDPhoto = images.IDPhoto || tripLeader.IDPhoto;
   tripLeader.FictionAndSimile = images.FictionAndSimile || tripLeader.FictionAndSimile;
   tripLeader.MaintenanceGuarantee = images.MaintenanceGuarantee || tripLeader.MaintenanceGuarantee;

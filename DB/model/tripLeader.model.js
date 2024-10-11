@@ -24,7 +24,6 @@ const tripLeaderSchema = new Schema(
     expirationDate: { type: Date },
     typeId: {
       type: Types.ObjectId,
-      ref: "TypesOfPlaces",
     },
     forgetCode: { type: String },
     ownerId: {

@@ -214,7 +214,6 @@ export const getTypesAndActivities = async (req, res) => {
   const language = req.headers['accept-language'] === 'ar' ? 'ar' : 'en'; 
 
   const types = await typesOfPlacesModel.find({ categoryId, isTool: true }).lean();
-  
   const activities = await activityModel.find({ type: { $in: types.map(type => type._id) } }).lean();
 
   const activitiesMap = activities.reduce((acc, activity) => {
@@ -238,9 +237,24 @@ export const getTypesAndActivities = async (req, res) => {
       id: type._id,
       name: type[`name_${language}`], 
     };
-  }).flat(); 
+  }).flat();
+
+  // Custom sort logic based on language
+  const customSortOrder = language === 'ar' ? ["يخت", "مراكب"] : ["Yacht", "Boats"];
+
+  results.sort((a, b) => {
+    const aIndex = customSortOrder.indexOf(a.name);
+    const bIndex = customSortOrder.indexOf(b.name);
+
+    if (aIndex === -1 && bIndex === -1) {
+      return 0; // No change if both names are not in the custom order
+    }
+
+    if (aIndex === -1) return 1; // Keep `a` after `b` if `a` is not in the custom list
+    if (bIndex === -1) return -1; // Keep `b` after `a` if `b` is not in the custom list
+
+    return aIndex - bIndex; // Sort by the order in `customSortOrder`
+  });
 
   return res.status(200).json({ success: true, data: results });
 };
-
-

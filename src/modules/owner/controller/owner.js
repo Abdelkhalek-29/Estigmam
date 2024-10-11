@@ -407,7 +407,7 @@ export const VerifyCode = asyncHandler(async (req, res, next) => {
 
 export const complete = asyncHandler(async (req, res, next) => {
 
-  const { fullName, email, nationalID, phone, country, city } = req.body;
+  const { fullName, email, nationalID, phone, country, city ,IDExpireDate} = req.body;
 
   const owner = await OwnerModel.findById(req.owner._id);
   if (!owner) {
@@ -422,6 +422,7 @@ export const complete = asyncHandler(async (req, res, next) => {
   owner.phone = phone || owner.phone;
   owner.country = country || owner.country;
   owner.city = city || owner.city;
+  owner.IDExpireDate=IDExpireDate|| owner.IDExpireDate;
   owner.ownerInfo=true
   if (req.files) {
     if (req.files.IDPhoto && req.files.IDPhoto.length > 0) {
