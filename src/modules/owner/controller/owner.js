@@ -62,10 +62,17 @@ export const register = asyncHandler(async (req, res, next) => {
   }
 
   if (password !== confirmPassword) {
-    return next(new Error("New password and confirm password do not match", { cause: 400 }));
+    return next(
+      new Error("New password and confirm password do not match", {
+        cause: 400,
+      })
+    );
   }
 
-  const hashPassword = bcryptjs.hashSync(password, Number(process.env.SALT_ROUND));
+  const hashPassword = bcryptjs.hashSync(
+    password,
+    Number(process.env.SALT_ROUND)
+  );
 
   const user = await OwnerModel.create({
     fullName,
@@ -78,7 +85,7 @@ export const register = asyncHandler(async (req, res, next) => {
   });
 
   const userCode = randomstring.generate({ length: 15 });
-  user.ownerCode = { code: userCode }; 
+  user.ownerCode = { code: userCode };
   await user.save();
 
   const token = jwt.sign(
@@ -99,15 +106,15 @@ export const register = asyncHandler(async (req, res, next) => {
     for (const key of MarineActivity) {
       const { id, quan } = key;
 
-      const predefinedType = predefinedTypes.find(type => type.id === id);
+      const predefinedType = predefinedTypes.find((type) => type.id === id);
       if (predefinedType) {
         for (let i = 0; i < +quan; i++) {
           await toolModel.create({
-            type: predefinedType.id, 
+            type: predefinedType.id,
             createBy: user._id,
             section: {
-              name_en: predefinedType.name.en, 
-              name_ar: predefinedType.name.ar, 
+              name_en: predefinedType.name.en,
+              name_ar: predefinedType.name.ar,
             },
           });
         }
@@ -118,8 +125,8 @@ export const register = asyncHandler(async (req, res, next) => {
   if (LandActivity) {
     for (const key of LandActivity) {
       const { id, quan } = key;
-      const type = await typesOfPlacesModel.findById(id); 
-      const activity = await activityModel.findById(id); 
+      const type = await typesOfPlacesModel.findById(id);
+      const activity = await activityModel.findById(id);
 
       if (type) {
         // It's a type
@@ -130,11 +137,11 @@ export const register = asyncHandler(async (req, res, next) => {
           });
         }
       } else if (activity) {
-        const activityType = await typesOfPlacesModel.findById(activity.type); 
+        const activityType = await typesOfPlacesModel.findById(activity.type);
         for (let i = 0; i < +quan; i++) {
           await placesModel.create({
             activityId: id,
-            type: activityType._id, 
+            type: activityType._id,
             createBy: user._id,
           });
         }
@@ -146,32 +153,6 @@ export const register = asyncHandler(async (req, res, next) => {
     success: true,
     status: 200,
     message: "Registration successful",
-    data: {
-      token,
-      fullName: user.fullName || user.name,
-      nationalID: user.nationalID || user.N_id,
-      email: user.email,
-      country: {
-        id: countryId._id,
-        name: countryId.name,
-        image:countryId.image.url
-      },
-      city: {
-        id: cityId._id,
-        name: cityId.name, 
-      },
-      phone: user.phone,
-      userName: user.userName,
-      role: user.role,
-      isUpdated: user.isUpdated,
-      profileImage: user.profileImage,
-      isDate: user.isDate,
-      id: user._id,
-      ownerInfo:user.ownerInfo,
-      addLeader:user.addLeader,
-      infoUpdate:user.infoUpdate,
-      registerAgreement:user.registerAgreement
-    },
   });
 });
 
@@ -220,7 +201,6 @@ export const login = asyncHandler(async (req, res, next) => {
     agent: req.headers["user-agent"],
   });
 
-
   const responseData = {
     token,
     fullName: user.fullName || user.name,
@@ -233,7 +213,6 @@ export const login = asyncHandler(async (req, res, next) => {
     profileImage: user.profileImage,
     isDate: user.isDate,
     id: user._id,
-
   };
 
   if (role === "Owner") {
@@ -248,10 +227,10 @@ export const login = asyncHandler(async (req, res, next) => {
     };
     responseData.ownerInfo = user.ownerInfo;
     responseData.addLeader = user.addLeader;
-    responseData.registerAgreement=user.registerAgreement
+    responseData.registerAgreement = user.registerAgreement;
   }
   if (role === "TripLeader") {
-    responseData.infoUpdate=user.infoUpdate
+    responseData.infoUpdate = user.infoUpdate;
   }
 
   return res.status(200).json({
@@ -410,118 +389,74 @@ export const VerifyCode = asyncHandler(async (req, res, next) => {
 });
 
 export const complete = asyncHandler(async (req, res, next) => {
+  const id  = req.owner._id; // Assume you're getting the owner's ID from the URL
+  const { fullName, email, phone, countryId, cityId } = req.body;
 
-  const { fullName, email, nationalID, phone, country, city ,IDExpireDate} = req.body;
+  // Find the owner by ID
+  const owner = await OwnerModel.findById(id)
+    .populate("country", "name image")
+    .populate("city", "name");
 
-  const owner = await OwnerModel.findById(req.owner._id);
   if (!owner) {
-    return next(new Error("Owner not found", { cause: 404 }));
+    return next(new Error("Owner not found", { status: 404 }));
   }
-
-  const ownerId = req.owner._id;
-
   owner.fullName = fullName || owner.fullName;
   owner.email = email || owner.email;
-  owner.nationalID = nationalID || owner.nationalID;
   owner.phone = phone || owner.phone;
-  owner.country = country || owner.country;
-  owner.city = city || owner.city;
-  owner.IDExpireDate=IDExpireDate|| owner.IDExpireDate;
-  owner.ownerInfo=true
-  if (req.files) {
-    if (req.files.IDPhoto && req.files.IDPhoto.length > 0) {
-      const idFileResult = await cloudinary.uploader.upload(
-        req.files.IDPhoto[0].path,
-        {
-          resource_type: "raw",
-          folder: `${process.env.FOLDER_CLOUDINARY}/owner/${ownerId}/IDPhotoFile`,
-        }
-      );
-      owner.IDPhoto = {
-        url: idFileResult.secure_url,
-        id: idFileResult.public_id,
-      };
-    }
-
-    if (req.files.FictionAndSimile && req.files.FictionAndSimile.length > 0) {
-      const fictionAndSimileResult = await cloudinary.uploader.upload(
-        req.files.FictionAndSimile[0].path,
-        {
-          resource_type: "raw",
-          folder: `${process.env.FOLDER_CLOUDINARY}/owner/${ownerId}/FictionAndSimileFile`,
-        }
-      );
-      owner.FictionAndSimile = {
-        url: fictionAndSimileResult.secure_url,
-        id: fictionAndSimileResult.public_id,
-      };
-    }
-
-    if (
-      req.files.MaintenanceGuarantee &&
-      req.files.MaintenanceGuarantee.length > 0
-    ) {
-      const maintenanceGuaranteeResult = await cloudinary.uploader.upload(
-        req.files.MaintenanceGuarantee[0].path,
-        {
-          resource_type: "raw",
-          folder: `${process.env.FOLDER_CLOUDINARY}/owner/${ownerId}/MaintenanceGuaranteeFile`,
-        }
-      );
-      owner.MaintenanceGuarantee = {
-        url: maintenanceGuaranteeResult.secure_url,
-        id: maintenanceGuaranteeResult.public_id,
-      };
-    }
-
-    if (req.files.DrugAnalysis && req.files.DrugAnalysis.length > 0) {
-      const drugAnalysisResult = await cloudinary.uploader.upload(
-        req.files.DrugAnalysis[0].path,
-        {
-          resource_type: "raw",
-          folder: `${process.env.FOLDER_CLOUDINARY}/owner/${ownerId}/DrugAnalysisFile`,
-        }
-      );
-      owner.DrugAnalysis = {
-        url: drugAnalysisResult.secure_url,
-        id: drugAnalysisResult.public_id,
-      };
-    }
-
-    if (req.files.profileImage && req.files.profileImage.length > 0) {
-      const profileImageResult = await cloudinary.uploader.upload(
-        req.files.profileImage[0].path,
-        {
-          resource_type: "image",
-          folder: `${process.env.FOLDER_CLOUDINARY}/owner/${ownerId}/profileImageFile`,
-        }
-      );
-      owner.profileImage = {
-        url: profileImageResult.secure_url,
-        id: profileImageResult.public_id,
-      };
-    }
+  
+  if (countryId) {
+    owner.countryId = countryId;
+  }
+  
+  if (cityId) {
+    owner.cityId = cityId;
   }
 
   await owner.save();
 
-  res.status(200).json({
+  // Prepare the response data
+  const responseData = {
     success: true,
     message: "Owner profile updated successfully",
-  });
+    data: {
+      fullName: owner.fullName,
+      email: owner.email,
+      phone: owner.phone,
+      role: owner.role,
+      profileImage: owner.profileImage,
+      country: owner.country ? {
+        id: owner.country._id,
+        name: owner.country.name,
+        image: owner.country.image ? owner.country.image.url : null, // Check if image exists
+      } : null, // Set to null if country is undefined
+      city: owner.city ? {
+        id: owner.city._id,
+        name: owner.city.name,
+      } : null, // Set to null if city is undefined
+      id: owner._id,
+      isUpdated:owner.isUpdated,
+      isDate:owner.isDate,
+      ownerInfo:owner.ownerInfo,
+      addLeader:owner.addLeader,
+      registerAgreement:owner.registerAgreement
+    },
+  };
+
+  return res.status(200).json(responseData);
 });
+
+
+
 
 export const lastTrips = asyncHandler(async (req, res, next) => {
   const language = req.query.lang || req.headers["accept-language"] || "en";
   const nameField = language === "ar" ? "name_ar" : "name_en";
 
   const filter = {
-    ...(
-      req.tripLeader
-        ? { tripLeaderId: req.tripLeader._id }
-        : { createBy: req.owner._id }
-    ),
-    status: { $ne: "pending" }, 
+    ...(req.tripLeader
+      ? { tripLeaderId: req.tripLeader._id }
+      : { createBy: req.owner._id }),
+    status: { $ne: "pending" },
   };
 
   const upcomingTrips = await tripModel
@@ -560,12 +495,12 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
       ...trip.toObject(),
       typeOfPlace: {
         _id: typeOfPlace._id,
-        name: typeOfPlace[nameField], 
+        name: typeOfPlace[nameField],
       },
       category: {
         _id: category._id,
-        name: category[nameField], 
-        id: category._id, 
+        name: category[nameField],
+        id: category._id,
       },
     };
   });
@@ -642,9 +577,7 @@ export const trips = asyncHandler(async (req, res, next) => {
 
   const formattedTrips = trips.map((trip) => {
     const categoryName = trip.category ? trip.category[nameField] : "";
-    const typeOfPlaceName = trip.typeOfPlace
-      ? trip.typeOfPlace[nameField]
-      : "";
+    const typeOfPlaceName = trip.typeOfPlace ? trip.typeOfPlace[nameField] : "";
     const activityName = trip.activity ? trip.activity[nameField] : "";
 
     const bedTypes = trip.bedType
@@ -686,7 +619,6 @@ export const trips = asyncHandler(async (req, res, next) => {
   });
 });
 
-
 export const getCreatedActivities = asyncHandler(async (req, res, next) => {
   const userId = req.owner.id; // Get the owner ID from the request
   const language = req.headers["accept-language"] || "en";
@@ -704,7 +636,9 @@ export const getCreatedActivities = asyncHandler(async (req, res, next) => {
     const toolTypeId = tool.type.toString(); // Convert ObjectId to string
 
     // Find the predefined type matching the tool's type
-    const predefinedType = predefinedTypes.find(type => type.id === toolTypeId);
+    const predefinedType = predefinedTypes.find(
+      (type) => type.id === toolTypeId
+    );
 
     // Skip this tool if the type is unknown
     if (!predefinedType) return;
@@ -765,8 +699,6 @@ export const getCreatedActivities = asyncHandler(async (req, res, next) => {
     places: placesWithDetails,
   });
 });
-
- 
 
 export const getActivity = asyncHandler(async (req, res, next) => {
   const userId = req.owner._id; // Assuming you get the owner ID from req.owner
