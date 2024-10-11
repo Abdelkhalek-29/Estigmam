@@ -103,7 +103,12 @@ export const searchBerth = asyncHandler(async (req, res) => {
 export const saveSearchResultBerth = asyncHandler(async (req, res) => {
   const { berthId } = req.params;
 
-  const userId = req.user._id;
+  // Determine if the request is coming from a user, owner, or trip leader
+  const userId = req.user?._id || req.owner?._id || req.tripLeader?._id;
+
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
 
   const berth = await berthModel.findById(berthId);
   if (!berth) {
@@ -114,7 +119,7 @@ export const saveSearchResultBerth = asyncHandler(async (req, res) => {
     berthName: berth.name,
     berthId: berth._id,
     location: berth.location,
-    userId
+    userId,  // This now includes user, owner, or trip leader
   });
 
   await newSearch.save();
@@ -123,18 +128,26 @@ export const saveSearchResultBerth = asyncHandler(async (req, res) => {
 });
 
 
+
 export const getSearchHistory = asyncHandler(async (req, res) => {
-  const userId = req.user._id;
+  // Determine if the request is coming from a user, owner, or trip leader
+  const userId = req.user?._id || req.owner?._id || req.tripLeader?._id;
+
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
   const searchHistory = await searchHistoryBrthModel
     .find({ userId })
     .sort({ createdAt: -1 }) 
     .limit(4)
-    .select("berthName location"); 
+    .select("berthName location");
 
   const formattedSearchHistory = searchHistory.map((history) => ({
     _id: history._id,
     name: history.berthName, 
-    location: history.location
+    location: history.location,
   }));
+
   return res.status(200).json({ success: true, berths: formattedSearchHistory });
 });

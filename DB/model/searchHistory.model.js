@@ -18,7 +18,6 @@ const searchHistoryBerthSchema = new Schema(
     },
     userId: {
       type: Types.ObjectId, 
-      ref: "User",
       required: true,
     }
   },
