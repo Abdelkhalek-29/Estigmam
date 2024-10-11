@@ -153,6 +153,32 @@ export const register = asyncHandler(async (req, res, next) => {
     success: true,
     status: 200,
     message: "Registration successful",
+    data: {
+      token,
+      fullName: user.fullName || user.name,
+      nationalID: user.nationalID || user.N_id,
+      email: user.email,
+      country: {
+        id: countryId._id,
+        name: countryId.name,
+        image:countryId.image.url
+      },
+      city: {
+        id: cityId._id,
+        name: cityId.name, 
+      },
+      phone: user.phone,
+      userName: user.userName,
+      role: user.role,
+      isUpdated: user.isUpdated,
+      profileImage: user.profileImage,
+      isDate: user.isDate,
+      id: user._id,
+      ownerInfo:user.ownerInfo,
+      addLeader:user.addLeader,
+      infoUpdate:user.infoUpdate,
+      registerAgreement:user.registerAgreement
+    },
   });
 });
 
