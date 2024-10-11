@@ -457,6 +457,7 @@ export const complete = asyncHandler(async (req, res, next) => {
       fullName: owner.fullName,
       email: owner.email,
       phone: owner.phone,
+      userName:owner.userName,
       role: owner.role,
       nationalID:owner.nationalID,
       profileImage: owner.profileImage,
