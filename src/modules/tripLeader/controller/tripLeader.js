@@ -5,6 +5,9 @@ import tripModel from "../../../../DB/model/Trip.model.js";
 import ratingModel from "../../../../DB/model/rating.model.js";
 import cloudinary from "../../../utils/cloudinary.js";
 import OwnerModel from "../../../../DB/model/Owner.model .js";
+import tokenModel from "../../../../DB/model/Token.model.js";
+import jwt from "jsonwebtoken";
+
 
 export const addTripLeader = asyncHandler(async (req, res, next) => {
   const { phone } = req.body;
@@ -184,10 +187,21 @@ export const completeProfile = asyncHandler(async (req, res, next) => {
   tripLeader.status = "active"; 
 
     await tripLeader.save();
+        // Generate token
+       const token = jwt.sign(
+          { id: tripLeader._id, phone: tripLeader.phone, tripLeader:tripLeader.role },
+          process.env.TOKEN_SIGNATURE
+        );
+      await tokenModel.create({
+        token,
+        user: tripLeader._id,
+        agent: req.headers["user-agent"],
+      });
     return res.status(200).json({
       success: true,
       message: "Trip Leader profile updated successfully",
       data: {
+        token,
         fullName: tripLeader.name,
         nationalID: tripLeader.N_id,
         phone: tripLeader.phone,

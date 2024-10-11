@@ -439,16 +439,26 @@ export const complete = asyncHandler(async (req, res, next) => {
   }
 
   await owner.save();
-
-  // Prepare the response data
+    // Generate token
+    const token = jwt.sign(
+      { id: owner._id, phone: owner.phone, role:owner.role },
+      process.env.TOKEN_SIGNATURE
+    );
+  await tokenModel.create({
+    token,
+    user: owner._id,
+    agent: req.headers["user-agent"],
+  });
   const responseData = {
     success: true,
     message: "Owner profile updated successfully",
     data: {
+      token,
       fullName: owner.fullName,
       email: owner.email,
       phone: owner.phone,
       role: owner.role,
+      nationalID:owner.nationalID,
       profileImage: owner.profileImage,
       country: owner.country ? {
         id: owner.country._id,
