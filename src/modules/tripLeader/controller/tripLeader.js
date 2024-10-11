@@ -179,7 +179,7 @@ export const completeProfile = asyncHandler(async (req, res, next) => {
   tripLeader.MaintenanceGuarantee = images.MaintenanceGuarantee || tripLeader.MaintenanceGuarantee;
   tripLeader.DrugAnalysis = images.DrugAnalysis || tripLeader.DrugAnalysis;
   tripLeader.profileImage = images.profileImage || tripLeader.profileImage;
-
+  tripLeader.infoUpdate="true"
   tripLeader.status = "active"; // Set status to a valid value
 
     await tripLeader.save();
@@ -196,6 +196,7 @@ export const completeProfile = asyncHandler(async (req, res, next) => {
         profileImage: tripLeader.profileImage,
         isDate: tripLeader.isDate,
         isUpdated:tripLeader.isUpdated,
+        infoUpdate:tripLeader.infoUpdate,
         id: tripLeader._id,
       },
     });

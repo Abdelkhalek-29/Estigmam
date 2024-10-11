@@ -9,18 +9,18 @@ const router = Router();
 router.post(
   "/",
   // auth, //dashboard
-  validation(validators.addAgreement),
+//  validation(validators.addAgreement),
   agreementController.addAgreement
 );
 router.get("/", agreementController.getAgreement);
 
 router.post(
   "/owner",
-  validation(validators.addAgreement),
+ // validation(validators.addAgreement),
 
   agreementController.addAgreementOwner
 );
 
-router.get("/owner", agreementController.getAgreementOwner);
+router.get("/ownerRegister", agreementController.getRegisterAgreement);
 
 export default router;
