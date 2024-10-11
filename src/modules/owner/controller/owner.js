@@ -168,7 +168,8 @@ export const register = asyncHandler(async (req, res, next) => {
       isDate: user.isDate,
       id: user._id,
       ownerInfo:user.ownerInfo,
-      addLeader:user.addLeader
+      addLeader:user.addLeader,
+      infoUpdate:user.infoUpdate
     },
   });
 });
@@ -248,6 +249,7 @@ export const login = asyncHandler(async (req, res, next) => {
     responseData.addLeader = user.addLeader;
   }
   if (role === "TripLeader") {
+    responseData.infoUpdate=user.infoUpdate
   }
 
   return res.status(200).json({
