@@ -121,7 +121,7 @@ export const updateTripLeaderPassword = asyncHandler(async (req, res, next) => {
 });
 
 export const completeProfile = asyncHandler(async (req, res, next) => {
-  const { name, N_id, phone, userName, license, expirationDate, createTrip, typeId } = req.body;
+  const { name, N_id, phone, userName, license, expirationDate, createTrip, typeId ,IDExpireDate} = req.body;
   const tripLeaderId = req.tripLeader._id; 
 
   const tripLeader = await tripLeaderModel.findById(tripLeaderId);
@@ -179,8 +179,9 @@ export const completeProfile = asyncHandler(async (req, res, next) => {
   tripLeader.MaintenanceGuarantee = images.MaintenanceGuarantee || tripLeader.MaintenanceGuarantee;
   tripLeader.DrugAnalysis = images.DrugAnalysis || tripLeader.DrugAnalysis;
   tripLeader.profileImage = images.profileImage || tripLeader.profileImage;
+  tripLeader.IDExpireDate = IDExpireDate || tripLeader.IDExpireDate;
   tripLeader.infoUpdate="true"
-  tripLeader.status = "active"; // Set status to a valid value
+  tripLeader.status = "active"; 
 
     await tripLeader.save();
     return res.status(200).json({

@@ -98,6 +98,7 @@ export const completeValidationSchema = joi
     nationalID: joi.string().min(14),
     city: joi.string().custom(validateObjectId),
     country: joi.string().custom(validateObjectId),
+    IDExpireDate:joi.date().required(),
     phone: joi
       .string()
       .regex(/^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/),

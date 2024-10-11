@@ -57,23 +57,7 @@ router.patch(
 );
 router.patch(
   "/completeRegister",
-  (req, res, next) => {
-    // Log request details here to check if the request is reaching the route
-    console.log("Request received at /completeRegister");
-    console.log(req.method); // Log HTTP method
-    console.log(req.headers); // Log request headers
-    console.log(req.body); // Log request body
-
-    next(); // Move to the next middleware (authentication)
-  },
-
   auth,
-  (req, res, next) => {
-    console.log("Request Headers:", req.headers);
-    console.log("Request Body:", req.body);
-    console.log("Request Files:", req.files);
-    next();
-  },
   fileUpload([...fileValidation.image, ...fileValidation.file]).fields([
     { name: "profileImage", maxCount: 1 },
     { name: "IDPhoto", maxCount: 1 },
@@ -81,17 +65,7 @@ router.patch(
     { name: "DrugAnalysis", maxCount: 1 },
     { name: "MaintenanceGuarantee", maxCount: 1 },
   ]),
-  (req, res, next) => {
-    // Log after the fileUpload middleware
-    console.log("Files after fileUpload:", req.files);
-    next();
-  },
   validation(Validators.completeValidationSchema),
-  (req, res, next) => {
-    // Log after validation
-    console.log("Request after validation:", req.body);
-    next();
-  },
   ownerController.complete
 );
 
