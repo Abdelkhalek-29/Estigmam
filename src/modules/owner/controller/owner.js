@@ -1013,3 +1013,50 @@ export const registerAgreement = asyncHandler(async (req, res, next) => {
     message: "Agreement registered successfully.",
   });
 });
+
+export const myProfile=asyncHandler(async(req,res,next) =>{
+  const ownerId = req.owner._id;
+
+  const owner = await OwnerModel.findById(ownerId)
+    .populate("country", "name image")
+    .populate("city", "name");
+
+  if (!owner) {
+    return res.status(404).json({ success: false, message: "Owner not found" });
+  }
+  const responseData = {
+    fullName: owner.fullName,
+    nationalID: owner.nationalID,
+    IDExpireDate:owner.IDExpireDate,
+    email: owner.email,
+    userName: owner.userName,
+    country: owner.country ? {
+      id: owner.country._id,
+      name: owner.country.name,
+      image: owner.country.image?.url,
+    } : null,
+    city: owner.city ? {
+      id: owner.city._id,
+      name: owner.city.name,
+    } : null,
+    phone: owner.phone,
+    role: owner.role,
+    isUpdated: owner.isUpdated,
+    profileImage: owner.profileImage,
+    IDPhoto:owner.IDPhoto,
+    MaintenanceGuarantee:owner.MaintenanceGuarantee,
+    DrugAnalysis:owner.DrugAnalysis,
+    FictionAndSimile:owner.FictionAndSimile,
+    isDate: owner.isDate,
+    id: owner._id,
+    ownerInfo: owner.ownerInfo,
+    addLeader: owner.addLeader,
+    registerAgreement: owner.registerAgreement,
+  };
+
+  // Send the owner data back to the client
+  return res.status(200).json({
+    success: true,
+    message: "Owner data retrieved successfully",
+    data: responseData,
+  })})

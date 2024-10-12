@@ -95,5 +95,6 @@ router.post(
 
 router.get("/codeShare", auth, ownerController.getOwnerCode);
 router.patch("/register-agreement",auth, ownerController.registerAgreement)
+router.get("/myProfile",auth,ownerController.myProfile)
 
 export default router;
