@@ -19,6 +19,9 @@ const searchHistoryBerthSchema = new Schema(
     userId: {
       type: Types.ObjectId, 
       required: true,
+    },
+    details:{
+      type:String,
     }
   },
   { timestamps: true }

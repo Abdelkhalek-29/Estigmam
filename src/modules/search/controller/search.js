@@ -95,7 +95,7 @@ export const searchBerth = asyncHandler(async (req, res) => {
 
   const berths = await berthModel.find({
     name: { $regex: name, $options: "i" }
-  }).select("_id name location name");
+  }).select("_id name location name details");
 
   return res.status(200).json({sucess :true, berths});
 });
@@ -120,6 +120,7 @@ export const saveSearchResultBerth = asyncHandler(async (req, res) => {
     berthId: berth._id,
     location: berth.location,
     userId,  // This now includes user, owner, or trip leader
+    details:berth.details
   });
 
   await newSearch.save();
@@ -141,12 +142,13 @@ export const getSearchHistory = asyncHandler(async (req, res) => {
     .find({ userId })
     .sort({ createdAt: -1 }) 
     .limit(4)
-    .select("berthName location");
+    .select("berthName location details");
 
   const formattedSearchHistory = searchHistory.map((history) => ({
     _id: history._id,
     name: history.berthName, 
     location: history.location,
+    details:history.details
   }));
 
   return res.status(200).json({ success: true, berths: formattedSearchHistory });
