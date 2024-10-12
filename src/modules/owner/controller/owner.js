@@ -1016,12 +1016,15 @@ export const registerAgreement = asyncHandler(async (req, res, next) => {
 
 
 export const myProfile = asyncHandler(async (req, res, next) => {
-  const ownerId = req.owner?._id;  // Use optional chaining to avoid errors if `req.owner` is undefined
-  const tripLeaderId = req.tripLeader?._id;  // Use optional chaining to avoid errors if `req.tripLeader` is undefined
+  const ownerId = req.owner?._id; // Optional chaining for `owner`
+  const tripLeaderId = req.tripLeader?._id; // Optional chaining for `tripLeader`
 
+  // Determine accepted language from the request headers (or fallback to default language)
   const acceptedLanguage = req.headers['accept-language'] || 'en'; // Assuming 'en' for English if not provided
 
   let user;
+  let typeData = null; // Initialize typeData
+  let typeName = null; // Initialize typeName
 
   // Determine if user is Owner or TripLeader
   if (ownerId) {
@@ -1029,25 +1032,30 @@ export const myProfile = asyncHandler(async (req, res, next) => {
       .populate("country", "name image")
       .populate("city", "name");
   } else if (tripLeaderId) {
-    user = await tripLeaderModel.findById(tripLeaderId)
+    user = await tripLeaderModel.findById(tripLeaderId);
+
+    // Proceed to handle `typeId` only for TripLeader
+    if (user.typeId) {
+      // Find the type from TypesOfPlacesModel based on the `typeId`
+      typeData = await typesOfPlacesModel.findById(user.typeId);
+
+      // If not found in TypesOfPlacesModel, look into the predefinedTypes list
+      if (!typeData) {
+        const predefinedType = predefinedTypes.find(type => type.id === user.typeId.toString());
+        if (predefinedType) {
+          typeName = acceptedLanguage === 'ar' ? predefinedType.name.ar : predefinedType.name.en;
+          typeData = predefinedType; // Use predefinedType for id as well
+        }
+      } else {
+        typeName = acceptedLanguage === 'ar' ? typeData.name_ar : typeData.name_en;
+      }
+    }
   } else {
     return res.status(404).json({ success: false, message: "User not found" });
   }
 
   if (!user) {
     return res.status(404).json({ success: false, message: "User not found" });
-  }
-  let typeData = await typesOfPlacesModel.findById(user.typeId);
-  let typeName = null;
-
-  if (!typeData) {
-    const predefinedType = predefinedTypes.find(type => type.id === user.typeId.toString());
-    if (predefinedType) {
-      typeName = acceptedLanguage === 'ar' ? predefinedType.name.ar : predefinedType.name.en;
-      typeData = predefinedType; 
-    }
-  } else {
-    typeName = acceptedLanguage === 'ar' ? typeData.name_ar : typeData.name_en;
   }
 
   // Prepare response data
@@ -1069,8 +1077,8 @@ export const myProfile = asyncHandler(async (req, res, next) => {
     phone: user.phone,
     role: user.role,
     isUpdated: user.isUpdated,
-    license:user.license,
-    expirationDate:user.expirationDate,
+    license: user.license,
+    expirationDate: user.expirationDate,
     profileImage: user.profileImage,
     IDPhoto: user.IDPhoto,
     MaintenanceGuarantee: user.MaintenanceGuarantee,
@@ -1081,7 +1089,7 @@ export const myProfile = asyncHandler(async (req, res, next) => {
     ownerInfo: user.ownerInfo,
     addLeader: user.addLeader,
     registerAgreement: user.registerAgreement,
-    type: typeData ? { id: typeData._id || typeData.id, name: typeName } : null 
+    type: tripLeaderId && typeData ? { id: typeData._id || typeData.id, name: typeName } : null // Only include `type` for TripLeader
   };
 
   return res.status(200).json({
