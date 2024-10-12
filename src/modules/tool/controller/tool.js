@@ -306,7 +306,7 @@ export const getUpdatedTools = asyncHandler(async (req, res) => {
   const portNames = tools.map(tool => tool.portName);
 
   // Find all berths that match the portNames
-  const berths = await berthModel.find({ name: { $in: portNames } });
+  const berths = await berthModel.find({ name: { $in: portNames } }).select("details name _id")
 
   // Create a map of berth information based on the name (portName)
   const berthMap = berths.reduce((acc, berth) => {
