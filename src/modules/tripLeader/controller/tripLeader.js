@@ -212,6 +212,7 @@ export const completeProfile = asyncHandler(async (req, res, next) => {
         isDate: tripLeader.isDate,
         isUpdated:tripLeader.isUpdated,
         infoUpdate:tripLeader.infoUpdate,
+        IDExpireDate:tripLeader.IDExpireDate,
         id: tripLeader._id,
       },
     });

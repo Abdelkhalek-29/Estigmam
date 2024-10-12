@@ -1014,49 +1014,79 @@ export const registerAgreement = asyncHandler(async (req, res, next) => {
   });
 });
 
-export const myProfile=asyncHandler(async(req,res,next) =>{
-  const ownerId = req.owner._id;
 
-  const owner = await OwnerModel.findById(ownerId)
-    .populate("country", "name image")
-    .populate("city", "name");
+export const myProfile = asyncHandler(async (req, res, next) => {
+  const ownerId = req.owner?._id;  // Use optional chaining to avoid errors if `req.owner` is undefined
+  const tripLeaderId = req.tripLeader?._id;  // Use optional chaining to avoid errors if `req.tripLeader` is undefined
 
-  if (!owner) {
-    return res.status(404).json({ success: false, message: "Owner not found" });
+  const acceptedLanguage = req.headers['accept-language'] || 'en'; // Assuming 'en' for English if not provided
+
+  let user;
+
+  // Determine if user is Owner or TripLeader
+  if (ownerId) {
+    user = await OwnerModel.findById(ownerId)
+      .populate("country", "name image")
+      .populate("city", "name");
+  } else if (tripLeaderId) {
+    user = await tripLeaderModel.findById(tripLeaderId)
+  } else {
+    return res.status(404).json({ success: false, message: "User not found" });
   }
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: "User not found" });
+  }
+  let typeData = await typesOfPlacesModel.findById(user.typeId);
+  let typeName = null;
+
+  if (!typeData) {
+    const predefinedType = predefinedTypes.find(type => type.id === user.typeId.toString());
+    if (predefinedType) {
+      typeName = acceptedLanguage === 'ar' ? predefinedType.name.ar : predefinedType.name.en;
+      typeData = predefinedType; 
+    }
+  } else {
+    typeName = acceptedLanguage === 'ar' ? typeData.name_ar : typeData.name_en;
+  }
+
+  // Prepare response data
   const responseData = {
-    fullName: owner.fullName,
-    nationalID: owner.nationalID,
-    IDExpireDate:owner.IDExpireDate,
-    email: owner.email,
-    userName: owner.userName,
-    country: owner.country ? {
-      id: owner.country._id,
-      name: owner.country.name,
-      image: owner.country.image?.url,
+    fullName: user.fullName || user.name,
+    nationalID: user.nationalID || user.N_id,
+    IDExpireDate: user.IDExpireDate,
+    email: user.email,
+    userName: user.userName,
+    country: user.country ? {
+      id: user.country._id,
+      name: user.country.name,
+      image: user.country.image?.url,
     } : null,
-    city: owner.city ? {
-      id: owner.city._id,
-      name: owner.city.name,
+    city: user.city ? {
+      id: user.city._id,
+      name: user.city.name,
     } : null,
-    phone: owner.phone,
-    role: owner.role,
-    isUpdated: owner.isUpdated,
-    profileImage: owner.profileImage,
-    IDPhoto:owner.IDPhoto,
-    MaintenanceGuarantee:owner.MaintenanceGuarantee,
-    DrugAnalysis:owner.DrugAnalysis,
-    FictionAndSimile:owner.FictionAndSimile,
-    isDate: owner.isDate,
-    id: owner._id,
-    ownerInfo: owner.ownerInfo,
-    addLeader: owner.addLeader,
-    registerAgreement: owner.registerAgreement,
+    phone: user.phone,
+    role: user.role,
+    isUpdated: user.isUpdated,
+    license:user.license,
+    expirationDate:user.expirationDate,
+    profileImage: user.profileImage,
+    IDPhoto: user.IDPhoto,
+    MaintenanceGuarantee: user.MaintenanceGuarantee,
+    DrugAnalysis: user.DrugAnalysis,
+    FictionAndSimile: user.FictionAndSimile,
+    isDate: user.isDate,
+    id: user._id,
+    ownerInfo: user.ownerInfo,
+    addLeader: user.addLeader,
+    registerAgreement: user.registerAgreement,
+    type: typeData ? { id: typeData._id || typeData.id, name: typeName } : null 
   };
 
-  // Send the owner data back to the client
   return res.status(200).json({
     success: true,
-    message: "Owner data retrieved successfully",
+    message: "Data retrieved successfully",
     data: responseData,
-  })})
+  });
+});
