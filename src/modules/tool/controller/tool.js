@@ -4,6 +4,7 @@ import toolModel from "../../../../DB/model/tool.model.js";
 import typesOfPlacesModel from "../../../../DB/model/typesOfPlaces.model.js";
 import activityModel from "../../../../DB/model/activity.model.js";
 import OwnerModel from "../../../../DB/model/Owner.model .js";
+import berthModel from "../../../../DB/model/berth.model.js";
 
 // Predefined types with both English and Arabic names
 const predefinedTypes = [
@@ -294,17 +295,32 @@ export const getUpdatedTools = asyncHandler(async (req, res) => {
     return res.status(403).json({ message: "Unauthorized" });
   }
 
+  // Find all tools that are updated by the current owner
   const tools = await toolModel
     .find({ createBy: ownerId, isUpdated: true })
     .select(
       "name type section licensePdf licenseNunmber licenseEndDate toolImage toolVideo location portName Examination_date details activityId code isUpdated"
     );
 
+  // Prepare an array to hold the names of all portNames to fetch corresponding berth details
+  const portNames = tools.map(tool => tool.portName);
+
+  // Find all berths that match the portNames
+  const berths = await berthModel.find({ name: { $in: portNames } });
+
+  // Create a map of berth information based on the name (portName)
+  const berthMap = berths.reduce((acc, berth) => {
+    acc[berth.name] = berth;
+    return acc;
+  }, {});
+
+  // Format the tools data and associate each tool with its corresponding berth info
   const formattedTools = tools.map((tool) => ({
     ...tool._doc,
     section: {
       name: tool.section[language === "ar" ? "name_ar" : "name_en"],
     },
+    berth: berthMap[tool.portName] || null, // Add berth information if available
   }));
 
   return res.status(200).json({
@@ -312,3 +328,4 @@ export const getUpdatedTools = asyncHandler(async (req, res) => {
     tools: formattedTools,
   });
 });
+
