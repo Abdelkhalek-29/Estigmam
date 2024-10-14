@@ -570,7 +570,7 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
       ? { tripLeaderId: req.tripLeader._id }
       : { createBy: req.owner._id }),
       status: { $nin: ["pending", "rejected"] }, 
-    };
+  };
 
   const upcomingTrips = await tripModel
     .find(filter)
