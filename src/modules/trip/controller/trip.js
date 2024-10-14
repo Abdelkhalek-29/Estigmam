@@ -936,6 +936,10 @@ export const addRatingAndComment = asyncHandler(async (req, res, next) => {
     return res.status(404).json({ success: false, message: "Trip not found" });
   }
 
+  if (!Array.isArray(trip.ratings)) {
+    trip.ratings = []; 
+  }
+
   const newRating = await ratingModel.create({
     user: userId,
     rating,
@@ -944,7 +948,10 @@ export const addRatingAndComment = asyncHandler(async (req, res, next) => {
   });
 
   trip.ratings.push(newRating._id);
+
   await trip.recalculateAverageRating();
+
+  await trip.save();
 
   res.status(201).json({
     success: true,

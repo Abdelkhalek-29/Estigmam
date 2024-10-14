@@ -77,13 +77,13 @@ router.get(
   validation(validators.categoryId),
   tripController.home
 );
-/*router.post(
+router.post(
   "/rate/:tripId",
   auth,
   isAuthorized("user"),
   validation(validators.rating),
   tripController.addRatingAndComment
-);*/
+);
 router.get(
   "/rateDetails/:tripId",
   validation(validators.tripId),

@@ -569,8 +569,8 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
     ...(req.tripLeader
       ? { tripLeaderId: req.tripLeader._id }
       : { createBy: req.owner._id }),
-    status: { $ne: "pending" },
-  };
+      status: { $nin: ["pending", "rejected"] }, 
+    };
 
   const upcomingTrips = await tripModel
     .find(filter)
@@ -649,14 +649,11 @@ export const trips = asyncHandler(async (req, res, next) => {
   const ownerId = req.owner ? req.owner._id : null;
   const tripLeaderId = req.tripLeader ? req.tripLeader._id : null;
 
-  // Mapping status index to string values
   const statusMap = {
     0: "current",
     1: "upComing",
-    2: null,
-    3: "completed",
-    4: "cancelled",
-    5: "rejected",
+    2: "completed",
+    3: "cancelled",
   };
 
   const status = statusMap[statusIndex] || null;

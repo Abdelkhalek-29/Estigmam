@@ -158,15 +158,15 @@ const tripSchema = new Schema(
   }
 );
 
-/*tripSchema.virtual("averageRating").get(function () {
+tripSchema.virtual("averageRating").get(function () {
   if (this.ratings.length > 0) {
     const sum = this.ratings.reduce((acc, rating) => acc + rating.rating, 0);
     return (sum / this.ratings.length).toFixed(2);
   }
   return 0;
-});*/
+});
 
-/*tripSchema.methods.recalculateAverageRating = async function () {
+tripSchema.methods.recalculateAverageRating = async function () {
   const ratings = await mongoose.model("Rating").find({ trip: this._id });
   if (ratings.length > 0) {
     const sum = ratings.reduce((acc, rating) => acc + rating.rating, 0);
@@ -175,7 +175,7 @@ const tripSchema = new Schema(
     this.averageRating = 0;
   }
   await this.save();
-};*/
+};
 
 tripSchema.virtual("finalPrice").get(function () {
   if (this.priceMember) {
