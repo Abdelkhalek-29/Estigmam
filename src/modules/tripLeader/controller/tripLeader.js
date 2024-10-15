@@ -187,6 +187,19 @@ export const completeProfile = asyncHandler(async (req, res, next) => {
   tripLeader.status = "active"; 
 
     await tripLeader.save();
+
+
+  if (tripLeader.ownerId) {
+    const owner = await ownerModel.findById(tripLeader.ownerId);
+    if (owner) {
+      await notificationModel.create({
+        title: 'Trip Leader Profile Completed',
+        description: `${tripLeader.name} has successfully completed their profile.`,
+        receiver: owner._id,
+        receiverModel: 'Owner', 
+      });
+    }
+  }
         // Generate token
        const token = jwt.sign(
           { id: tripLeader._id, phone: tripLeader.phone, tripLeader:tripLeader.role },
