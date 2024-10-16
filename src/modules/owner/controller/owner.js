@@ -1095,3 +1095,56 @@ export const myProfile = asyncHandler(async (req, res, next) => {
     data: responseData,
   });
 });
+
+export const changePassword = asyncHandler(async (req, res, next) => {
+  const { oldPass, newPass, confirmNewPass } = req.body;
+
+  if (newPass !== confirmNewPass) {
+    return res.status(400).json({ message: "New passwords do not match." });
+  }
+
+  let user;
+  // Check if the request is from an Owner or TripLeader
+  if (req.owner) {
+    user = await OwnerModel.findById(req.owner._id);
+  } else if (req.tripLeader) {
+    user = await tripLeaderModel.findById(req.tripLeader._id);
+  } else {
+    return res.status(400).json({ message: "Unauthorized user." });
+  }
+
+  // If user is not found
+  if (!user) {
+    return res.status(404).json({ message: "User not found." });
+  }
+
+  // Different logic for TripLeader and Owner
+  if (req.owner) {
+    // Owner: Compare old password using bcryptjs (because it is hashed)
+    const isMatch = await bcryptjs.compare(oldPass, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Old password is incorrect." });
+    }
+
+    // Hash the new password for Owner
+    const hashedPassword = bcryptjs.hashSync(newPass, Number(process.env.SALT_ROUND));
+    user.password = hashedPassword;
+
+  } else if (req.tripLeader) {
+    // TripLeader: Directly compare the oldPass with the stored password (since it's plain text)
+    if (oldPass !== user.password) {
+      return res.status(400).json({ message: "Old password is incorrect." });
+    }
+
+    // Directly set the new password (no hashing) for TripLeader
+    user.password = newPass;
+  }
+
+  // Save the updated user object
+  await user.save();
+
+  return res.status(200).json({
+    success: true,
+    message: "Password changed successfully.",
+  });
+});
