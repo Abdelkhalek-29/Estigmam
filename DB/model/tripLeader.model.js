@@ -116,7 +116,16 @@ const tripLeaderSchema = new Schema(
     infoUpdate:{
       type:Boolean,
       default:false
-    }
+    },  
+    leaderCode: {
+      code: String,
+      discount: {
+        type: Types.ObjectId,
+        ref: "Discount",
+        default:"66a7c1d406919ff7f43c6ad3"
+      },
+    },
+
   },
   { timestamps: true }
 );

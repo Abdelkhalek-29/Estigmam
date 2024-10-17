@@ -971,21 +971,35 @@ export const addTripLeader = asyncHandler(async (req, res, next) => {
 });
 
 export const getOwnerCode = asyncHandler(async (req, res, next) => {
-  const owner = await OwnerModel.findOne({ email: req.owner.email }).populate({
-    path: "ownerCode.discount",
-    ref: "Discount",
-    select: "discount -_id",
-  });
-  if (!owner) {
-    return next(new Error("Owner Not Found!", { cause: 404 }));
+  let user;
+  if (req.owner) {
+    user = await OwnerModel.findOne({ _id: req.owner._id }).populate({
+      path: "ownerCode.discount",
+      ref: "Discount",
+      select: "discount -_id",
+    });
+  } else if (req.tripLeader) {
+    user = await tripLeaderModel.findOne({ _id: req.tripLeader._id }).populate({
+      path: "leaderCode.discount",
+      ref: "Discount",
+      select: "discount -_id",
+    });
+  } else {
+    return res.status(403).json({ message: "Unauthorized role" });
   }
+
+  if (!user) {
+    return next(new Error("User Not Found!", { cause: 404 }));
+  }
+
+  const codeData = req.owner ? user.ownerCode : user.leaderCode;
 
   return res.status(200).json({
     success: true,
     status: 200,
     data: {
-      code: owner.ownerCode.code,
-      discount: owner.ownerCode.discount.discount,
+      code: codeData.code,
+      discount: codeData.discount?.discount || null,
     },
   });
 });
@@ -1104,7 +1118,6 @@ export const changePassword = asyncHandler(async (req, res, next) => {
   }
 
   let user;
-  // Check if the request is from an Owner or TripLeader
   if (req.owner) {
     user = await OwnerModel.findById(req.owner._id);
   } else if (req.tripLeader) {
@@ -1113,7 +1126,6 @@ export const changePassword = asyncHandler(async (req, res, next) => {
     return res.status(400).json({ message: "Unauthorized user." });
   }
 
-  // If user is not found
   if (!user) {
     return res.status(404).json({ message: "User not found." });
   }
