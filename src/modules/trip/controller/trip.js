@@ -1268,7 +1268,8 @@ export const getUpcomingTripsByBerth = asyncHandler(async (req, res) => {
   return res.status(200).json({ success: true, trips: tripsWithRatings });
 });
 
-/*export const category = asyncHandler(async (req, res, next) => {
+/*
+export const category = asyncHandler(async (req, res, next) => {
   const { categoryId } = req.params;
   const acceptedLanguage = req.headers['accept-language'] === 'ar' ? 'ar' : 'en';
 
@@ -1310,7 +1311,7 @@ export const getUpcomingTripsByBerth = asyncHandler(async (req, res) => {
     },
   });
 });
-
+*/
 export const getAllCategoriesWithTypesAndActivities = asyncHandler(async (req, res, next) => {
   const acceptedLanguage = req.headers['accept-language'] === 'ar' ? 'ar' : 'en';
 
@@ -1354,4 +1355,4 @@ export const getAllCategoriesWithTypesAndActivities = asyncHandler(async (req, r
     success: true,
     categories: result,
   });
-});*/
+});

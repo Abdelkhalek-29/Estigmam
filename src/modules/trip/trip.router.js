@@ -110,7 +110,7 @@ router.get('/upcoming-by-berth',auth,tripController.getUpcomingTripsByBerth)
   "/category/:categoryId",
 //  validation(validators.categoryId),
   tripController.category 
-)
-router.get('/cat',tripController.getAllCategoriesWithTypesAndActivities);*/
+)*/
+router.get('/Categories',tripController.getAllCategoriesWithTypesAndActivities);
 
 export default router;
