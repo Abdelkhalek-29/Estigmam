@@ -50,3 +50,38 @@ export const addAgreementOwner = asyncHandler(async (req, res, next) => {
     message: "Agreements added successfully.",
     data: newAgreementOwner,
 })})
+
+export const getAgreementByTitle = asyncHandler(async (req, res, next) => {
+  const { title } = req.query; // Get the title from query parameters
+
+  if (!title) {
+    return res.status(400).json({
+      success: false,
+      message: "Title query parameter is required.",
+    });
+  }
+
+  const agreements = await agreementOwnerModel.find({
+    "agreements.title": title,
+  });
+
+  if (!agreements || agreements.length === 0) {
+    return res.status(404).json({
+      success: false,
+      message: `No agreements with title '${title}' found.`,
+    });
+  }
+
+  const filteredAgreements = [];
+  agreements.forEach((agreement) => {
+    const matchingAgreements = agreement.agreements.filter(
+      (item) => item.title === title
+    );
+    filteredAgreements.push(...matchingAgreements);
+  });
+
+  return res.status(200).json({
+    success: true,
+    data: filteredAgreements,
+  });
+});

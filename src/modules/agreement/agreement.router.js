@@ -22,5 +22,5 @@ router.post(
 );
 
 router.get("/ownerRegister", agreementController.getRegisterAgreement);
-
+router.get("/more", agreementController.getAgreementByTitle);
 export default router;

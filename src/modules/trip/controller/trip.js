@@ -1267,3 +1267,91 @@ export const getUpcomingTripsByBerth = asyncHandler(async (req, res) => {
 
   return res.status(200).json({ success: true, trips: tripsWithRatings });
 });
+
+/*export const category = asyncHandler(async (req, res, next) => {
+  const { categoryId } = req.params;
+  const acceptedLanguage = req.headers['accept-language'] === 'ar' ? 'ar' : 'en';
+
+  if (!categoryId) {
+    return res.status(400).json({ success: false, message: "Category ID is required." });
+  }
+
+  const category = await categoryModel.findById(categoryId);
+  if (!category) {
+    return res.status(404).json({ success: false, message: "Category not found." });
+  }
+
+  const typesOfPlaces = await typesOfPlacesModel.find({ categoryId })
+    .populate('categoryId', `name_${acceptedLanguage}`)
+    .lean();
+
+  const mappedTypesOfPlaces = typesOfPlaces.map(place => ({
+    _id: place._id,
+    name: place[`name_${acceptedLanguage}`],
+  }));
+
+  const activities = await activityModel.find({ categoryId })
+    .populate('type', `name_${acceptedLanguage}`)
+    .lean();
+
+  const mappedActivities = activities.map(activity => ({
+    _id: activity._id,
+    name: activity[`name_${acceptedLanguage}`],
+    type: activity.type ? { id: activity.type._id, name: activity.type[`name_${acceptedLanguage}`] } : null,
+  }));
+
+  return res.status(200).json({
+    success: true,
+    category: {
+      id: category._id,
+      name: category[`name_${acceptedLanguage}`],
+      typesOfPlaces: mappedTypesOfPlaces,
+      activities: mappedActivities,
+    },
+  });
+});
+
+export const getAllCategoriesWithTypesAndActivities = asyncHandler(async (req, res, next) => {
+  const acceptedLanguage = req.headers['accept-language'] === 'ar' ? 'ar' : 'en';
+
+  const categories = await categoryModel.find().lean();
+
+  // Map through each category and populate types and activities
+  const result = await Promise.all(
+    categories.map(async (category) => {
+      // Get types of places for this category
+      const typesOfPlaces = await typesOfPlacesModel.find({ categoryId: category._id }).lean();
+
+      // Map through each type and get activities
+      const mappedTypes = await Promise.all(
+        typesOfPlaces.map(async (type) => {
+          const activities = await activityModel.find({ type: type._id }).lean();
+
+          // Map activities to correct language and structure
+          const mappedActivities = activities.map((activity) => ({
+            _id: activity._id,
+            name: activity[`name_${acceptedLanguage}`], // Get name based on the language
+          }));
+
+          return {
+            _id: type._id,
+            name: type[`name_${acceptedLanguage}`], // Get name based on the language
+            isTool: type.isTool,
+            activities: mappedActivities,
+          };
+        })
+      );
+
+      return {
+        _id: category._id,
+        name: category[`name_${acceptedLanguage}`], 
+        typesOfPlaces: mappedTypes,
+      };
+    })
+  );
+
+  return res.status(200).json({
+    success: true,
+    categories: result,
+  });
+});*/

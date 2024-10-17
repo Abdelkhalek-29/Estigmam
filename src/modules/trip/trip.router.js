@@ -1,6 +1,5 @@
 import { Router } from "express";
 import * as tripController from "./controller/trip.js";
-import { fileUpload, fileValidation } from "../../utils/multer.js";
 import * as validators from "./trip.validation.js";
 import auth from "../../middleware/auth.js";
 import { validation } from "../../middleware/validation.js";
@@ -107,4 +106,11 @@ router.patch(
 
 router.get('/trips-by-berth',auth ,tripController.tripsByBerth)
 router.get('/upcoming-by-berth',auth,tripController.getUpcomingTripsByBerth)
+/*router.get(
+  "/category/:categoryId",
+//  validation(validators.categoryId),
+  tripController.category 
+)
+router.get('/cat',tripController.getAllCategoriesWithTypesAndActivities);*/
+
 export default router;
