@@ -1353,22 +1353,48 @@ export const getAllCategoriesWithTypesAndActivities = asyncHandler(async (req, r
   });
 });
 
-export const getLeaders=asyncHandler(async(req,res,next)=>{
-  const ownerId = req.owner._id
+export const getLeaders = asyncHandler(async (req, res, next) => {
+  const ownerId = req.owner._id;
+  const { type } = req.body; 
 
-  const leaders=await tripLeaderModel.find({ownerId}).select(' _id name')
-  return res.status(200).json({success:true ,data: leaders})
-})
+  const tool = await toolModel.findOne({ type });
+  const place = await placesModel.findOne({ type });
 
-export const getTools=asyncHandler(async(req,res,next)=>{
-  const ownerId =req.owner._id
-  const tools=await toolModel.find({createBy:ownerId}).select('_id name')
+  let leaders = [];
 
-  return res.status(200).json({success:true ,data: tools})
-})
+  if (tool) {
+    leaders = await tripLeaderModel.find({ ownerId, typeId: tool.type }).select('_id name');
+  } else if (place) {
+    leaders = await tripLeaderModel.find({ ownerId, typeId: place.type }).select('_id name');
+  } else {
+    return res.status(404).json({ success: false, message: 'No matching found for the given type' });
+  }
 
-export const getPlaces =asyncHandler(async(req,res,next)=>{
-  const ownerId=req.owner._id
-  const places= await placesModel.find({createBy:ownerId}).select('_id name')
-  return res.status(200).json({success:true ,data: places})
-})
+  return res.status(200).json({ success: true, data: leaders });
+});
+
+export const getTools = asyncHandler(async (req, res, next) => {
+  const ownerId = req.owner?._id || req.tripLeader?._id;
+
+  let tools;
+  if (req.owner) {
+    tools = await toolModel.find({ createBy: ownerId ,isUpdated:true}).select('_id name type');
+  } else if (req.tripLeader) {
+    tools = await toolModel.find({ type: req.tripLeader.typeId,isUpdated:true }).select('_id name type');
+  }
+
+  return res.status(200).json({ success: true, data: tools });
+});
+
+export const getPlaces = asyncHandler(async (req, res, next) => {
+  const ownerId = req.owner?._id || req.tripLeader?._id;
+
+  let places;
+  if (req.owner) {
+    places = await placesModel.find({ createBy: ownerId ,isUpdated:true}).select('_id name type');
+  } else if (req.tripLeader) {
+    places = await placesModel.find({ type: req.tripLeader.typeId ,isUpdated:true}).select('_id name type');
+  }
+
+  return res.status(200).json({ success: true, data: places });
+});
