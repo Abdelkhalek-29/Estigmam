@@ -1317,26 +1317,22 @@ export const getAllCategoriesWithTypesAndActivities = asyncHandler(async (req, r
 
   const categories = await categoryModel.find().lean();
 
-  // Map through each category and populate types and activities
   const result = await Promise.all(
     categories.map(async (category) => {
-      // Get types of places for this category
       const typesOfPlaces = await typesOfPlacesModel.find({ categoryId: category._id }).lean();
 
-      // Map through each type and get activities
       const mappedTypes = await Promise.all(
         typesOfPlaces.map(async (type) => {
           const activities = await activityModel.find({ type: type._id }).lean();
 
-          // Map activities to correct language and structure
           const mappedActivities = activities.map((activity) => ({
             _id: activity._id,
-            name: activity[`name_${acceptedLanguage}`], // Get name based on the language
+            name: activity[`name_${acceptedLanguage}`], 
           }));
 
           return {
             _id: type._id,
-            name: type[`name_${acceptedLanguage}`], // Get name based on the language
+            name: type[`name_${acceptedLanguage}`], 
             isTool: type.isTool,
             activities: mappedActivities,
           };
@@ -1356,3 +1352,23 @@ export const getAllCategoriesWithTypesAndActivities = asyncHandler(async (req, r
     categories: result,
   });
 });
+
+export const getLeaders=asyncHandler(async(req,res,next)=>{
+  const ownerId = req.owner._id
+
+  const leaders=await tripLeaderModel.find({ownerId}).select(' _id name')
+  return res.status(200).json({success:true ,data: leaders})
+})
+
+export const getTools=asyncHandler(async(req,res,next)=>{
+  const ownerId =req.owner._id
+  const tools=await toolModel.find({createBy:ownerId}).select('_id name')
+
+  return res.status(200).json({success:true ,data: tools})
+})
+
+export const getPlaces =asyncHandler(async(req,res,next)=>{
+  const ownerId=req.owner._id
+  const places= await placesModel.find({createBy:ownerId}).select('_id name')
+  return res.status(200).json({success:true ,data: places})
+})

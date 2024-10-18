@@ -112,5 +112,7 @@ router.get('/upcoming-by-berth',auth,tripController.getUpcomingTripsByBerth)
   tripController.category 
 )*/
 router.get('/Categories',tripController.getAllCategoriesWithTypesAndActivities);
-
+router.get('/getLeaders',auth,tripController.getLeaders)
+router.get('/getTools',auth,tripController.getTools)
+router.get('/getPlaces',auth,tripController.getPlaces)
 export default router;
