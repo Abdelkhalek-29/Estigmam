@@ -1355,7 +1355,7 @@ export const getAllCategoriesWithTypesAndActivities = asyncHandler(async (req, r
 
 export const getLeaders = asyncHandler(async (req, res, next) => {
   const ownerId = req.owner._id;
-  const { type } = req.body; 
+  const { type } = req.params; 
 
   const tool = await toolModel.findOne({ type });
   const place = await placesModel.findOne({ type });
