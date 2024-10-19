@@ -2,25 +2,14 @@ import mongoose, { Schema, Types, model } from "mongoose";
 
 const additionSchema = new Schema(
     {
-    name: {
+    name_en: {
       type: String,
       required: true,
         },
-        Image: {
-           id:{
-            type: String,
-           },
-           url: {   
-            type: String,
-            }
-        },
-        
-        owner: {
-            type: Types.ObjectId,
-            ref: "Owner",
-            required: true,
-        }
-
+    name_ar:{
+      type:String,
+      required:true
+    }
   },
   { timestamps: true }
 );

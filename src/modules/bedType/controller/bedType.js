@@ -80,7 +80,3 @@ export const deleteBedType = asyncHandler(async (req, res, next) => {
   await bedType.remove();
   return res.status(200).json({ message: "Bed type deleted successfully" });
 });
-
-
-
-

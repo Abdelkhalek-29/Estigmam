@@ -22,8 +22,15 @@ export const addAddition = asyncHandler(async (req, res, next) => {
 })
  
 export const getAdditions = asyncHandler(async (req, res, next) => {
-    const additions = await additionModel.find().select("_id name ")
-    return res.status(200).json({ additions });
+  const acceptLanguage = req.headers['accept-language'] || 'en'; 
+  const language = acceptLanguage.includes('ar') ? 'ar' : 'en';
+
+    const additions = await additionModel.find()
+    const formattedAdditions = additions.map(addition => ({
+      _id: addition._id,
+      name: addition[`name_${language}`],
+    }));
+    return res.status(200).json({ additions:formattedAdditions });
 });
 
 export const getAddition = asyncHandler(async (req, res, next) => {
