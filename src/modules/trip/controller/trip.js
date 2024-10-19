@@ -1367,7 +1367,12 @@ export const getLeaders = asyncHandler(async (req, res, next) => {
   } else if (place) {
     leaders = await tripLeaderModel.find({ ownerId, typeId: place.type }).select('_id name');
   } 
-
+  const owner =await OwnerModel.findById(ownerId).select('_id fullName')
+  const ownerObject = {
+    _id: owner._id,
+    name: owner.fullName 
+  };
+  leaders.unshift(ownerObject)
   return res.status(200).json({ success: true, data: leaders });
 });
 
