@@ -3,22 +3,24 @@ import cloudinary from "../../../utils/cloudinary.js";
 import { asyncHandler } from "../../../utils/errorHandling.js";
 
 export const addBedType = asyncHandler(async (req, res, next) => {
-  const { name, description } = req.body;
-  const { _id } = req.owner;
+  const { name_ar, description_ar,name_en,description_en } = req.body;
+ // const { _id } = req.owner;
   const bedType = await bedTypeModel.create({
-    name,
-    description,
-    createBy: _id,
+    name_ar,
+    name_en,
+    description_en,
+    description_ar,
+  //  createBy: _id,
   });
 
-  const { secure_url, public_id } = await cloudinary.uploader.upload(
+ /* const { secure_url, public_id } = await cloudinary.uploader.upload(
     req.file.path,
     {
       folder: `${process.env.FOLDER_CLOUDINARY}/bedType/${_id}`,
     }
   );
   bedType.image = { url: secure_url, id: public_id };
-  await bedType.save();
+  await bedType.save();*/
   res.status(201).json({
     message: "Bed type created successfully",
     bedType
@@ -26,8 +28,18 @@ export const addBedType = asyncHandler(async (req, res, next) => {
 });
 
 export const getBedType = asyncHandler(async (req, res, next) => {
-  const bedType = await bedTypeModel.find();
-  return res.status(200).json({ bedType });
+  const acceptLanguage = req.headers['accept-language'] || 'en'; // Default to English if not provided
+  const language = acceptLanguage.includes('ar') ? 'ar' : 'en'; // Check if Arabic is in the header
+
+  const bedTypes = await bedTypeModel.find()
+
+  const formattedBedTypes = bedTypes.map(bedType => ({
+    _id: bedType._id,
+    name: bedType[`name_${language}`],
+    description: bedType[`description_${language}`],
+  }));
+
+  return res.status(200).json({ bedTypes: formattedBedTypes });
 });
 
 export const getBedTypeById = asyncHandler(async (req, res, next) => {

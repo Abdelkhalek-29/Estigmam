@@ -22,7 +22,7 @@ export const addAddition = asyncHandler(async (req, res, next) => {
 })
  
 export const getAdditions = asyncHandler(async (req, res, next) => {
-    const additions = await additionModel.find();
+    const additions = await additionModel.find().select("_id name ")
     return res.status(200).json({ additions });
 });
 

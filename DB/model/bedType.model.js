@@ -2,32 +2,41 @@ import mongoose, { Schema, Types, model } from "mongoose";
 
 const bedTypeSchema = new Schema(
   {
-    name: {
+    name_ar: {
       type: String,
       required: true,
       min: 5,
       max: 20,
     },
-    createBy: {
+    name_en: {
+      type: String,
+      required: true,
+      min: 5,
+      max: 20,
+    },
+    /*createBy: {
       type: Types.ObjectId,
       ref: "Owner",
       required: true,
-    },
-    description: {
+    },*/
+    description_ar: {
       type: String,
       required: true,
       min: 5,
     },
-    image: {
+    description_en: {
+      type: String,
+      required: true,
+      min: 5,
+    },
+    /*image: {
       url: {
         type: String,
       },
       id: {
         type: String,
       },
-    },
-
-    
+    },*/
   },
   { timestamps: true }
 );

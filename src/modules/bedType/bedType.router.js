@@ -8,10 +8,10 @@ const router = Router();
 
 router.post(
   "/add",
-  auth,
-  isAuthorized("owner"),
+//  auth,
+  //isAuthorized("owner"),
 
-  fileUpload(fileValidation.image).single("image"),
+ // fileUpload(fileValidation.image).single("image"),
   bedTypeController.addBedType
 );
 
