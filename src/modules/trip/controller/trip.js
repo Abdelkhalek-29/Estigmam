@@ -1366,9 +1366,7 @@ export const getLeaders = asyncHandler(async (req, res, next) => {
     leaders = await tripLeaderModel.find({ ownerId, typeId: tool.type }).select('_id name');
   } else if (place) {
     leaders = await tripLeaderModel.find({ ownerId, typeId: place.type }).select('_id name');
-  } else {
-    return res.status(404).json({ success: false, message: 'No matching found for the given type' });
-  }
+  } 
 
   return res.status(200).json({ success: true, data: leaders });
 });
