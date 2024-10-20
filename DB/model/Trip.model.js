@@ -26,16 +26,16 @@ const tripSchema = new Schema(
     },
     startLocation: { Longitude: { type: Number }, Latitude: { type: Number } },
     endLocation: { Longitude: { type: Number }, Latitude: { type: Number } },
-    cityId: { type: Types.ObjectId, ref: "City", required: true },
+    cityId: { type: Types.ObjectId, ref: "City"},
     berh: { type: String },
-    descriptionAddress: { type: String },
+   // descriptionAddress: { type: String },
     tripTitle: {
       type: String,
       min: 3,
       max: 50,
       required: true,
     },
-    description: String,
+    //description: String,
     priceMember: {
       type: Number,
       default: 0,
@@ -64,7 +64,6 @@ const tripSchema = new Schema(
       min: 0,
       max: 100,
       default:0,
-      required:true
     },
     priceAfterOffer: {
       type: Number,

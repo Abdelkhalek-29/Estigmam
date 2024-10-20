@@ -11,7 +11,7 @@ router.post(
   "/createTrip",
   auth,
   isAuthorized("owner"),
-  validation(validators.createTrip),
+ // validation(validators.createTrip),
   tripController.createTrip
 );
 router.post(

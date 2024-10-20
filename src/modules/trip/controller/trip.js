@@ -113,7 +113,7 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     berh,
     descriptionAddress,
     tripTitle,
-    description,
+   // description,
     priceMember,
     addition = [],
     bedType = [],
@@ -122,7 +122,7 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     activity,
     equipmentId,
     tripLeaderId,
-    cityId,
+   // cityId,
   } = req.body;
 
   const additionArray = Array.isArray(addition) ? addition : [addition];
@@ -152,10 +152,10 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     return next(new Error("Category not found", { cause: 404 }));
   }
 
-  const cityExist = await cityModel.findById(cityId);
+ /* const cityExist = await cityModel.findById(cityId);
   if (!cityExist) {
     return next(new Error("City not found", { cause: 404 }));
-  }
+  }*/
 
   const tripCode = randomstring.generate({
     length: 7,
@@ -186,38 +186,26 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     berh,
     descriptionAddress,
     tripTitle,
-    description,
+   // description,
     priceMember,
     addition: additionArray,
     bedType: bedTypeArray,
     category,
     typeOfPlace,
     activity,
-    cityId,
+  //  cityId,
     tripCode,
     distance,
     numberOfPeopleAvailable: peopleNumber,
-    isCustomized: true, // Set isCustomized to true here
+    isCustomized: false, // Set isCustomized to true here
   });
 
-  const city = await cityModel.findById(newTrip.cityId);
-  newTrip.city = city.name;
+
 
   const ownerId = req.owner?._id;
   const userId = req.user?._id;
 
   if (ownerId) {
-    const tripLeader = await tripLeaderModel.findOne({
-      _id: tripLeaderId,
-      ownerId,
-    });
-
-    if (!tripLeader) {
-      return next(
-        new Error("Trip leader does not belong to this owner", { cause: 403 })
-      );
-    }
-
     let equipment;
 
     equipment = await toolModel.findById(equipmentId);
@@ -242,8 +230,8 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     newTrip.equipmentId = equipmentId;
     newTrip.defaultImage = defaultImage;
     newTrip.subImages = subImages;
-    newTrip.offer = offer;
-    newTrip.status = "confirmed";
+    //newTrip.offer = offer;
+    newTrip.status = "upComing";
     await newTrip.save();
 
     await GroupChat.create({
