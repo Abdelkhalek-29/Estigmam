@@ -119,7 +119,7 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     bedType = [],
     category,
     typeOfPlace,
-    activity,
+    activity=null,
     equipmentId,
     tripLeaderId,
    // cityId,
@@ -175,6 +175,7 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     longitude: endLocation.Longitude,
   };
   const distance = haversineDistance(startCoords, endCoords).toFixed(2);
+  const activityId = activity === "" ? null : activity; // handle empty string
 
   const newTrip = new tripModel({
     startDate,
@@ -192,7 +193,7 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     bedType: bedTypeArray,
     category,
     typeOfPlace,
-    activity,
+    activity:activityId,
   //  cityId,
     tripCode,
     distance,
