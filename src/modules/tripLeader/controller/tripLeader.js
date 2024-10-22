@@ -190,7 +190,7 @@ export const completeProfile = asyncHandler(async (req, res, next) => {
 
 
   if (tripLeader.ownerId) {
-    const owner = await ownerModel.findById(tripLeader.ownerId);
+    const owner = await OwnerModel.findById(tripLeader.ownerId);
     if (owner) {
       await notificationModel.create({
         title: 'Trip Leader Profile Completed',
