@@ -201,9 +201,9 @@ export const createTrip = asyncHandler(async (req, res, next) => {
   });
 
 
-
   const ownerId = req.owner?._id;
   const userId = req.user?._id;
+  const tripLeader=req.tripLeader?._id;
 
   if (ownerId) {
     let equipment;
@@ -249,6 +249,47 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     newTrip.status = "pending";
     await newTrip.save();
   }
+  else if(tripLeader) {
+    let equipment;
+
+    equipment = await toolModel.findById(equipmentId);
+    if (!equipment) {
+      equipment = await placesModel.findById(equipmentId);
+      if (!equipment) {
+        equipment = await activityModel.findById(equipmentId);
+        if (!equipment) {
+          return next(new Error("Equipment not found", { cause: 404 }));
+        }
+      }
+    }
+    const defaultImage = equipment.toolImage
+      ? equipment.toolImage[0]
+      : equipment.images[0];
+    const subImages = equipment.toolImage
+      ? equipment.toolImage.slice(1)
+      : equipment.images.slice(1);
+const leader=await tripLeaderModel.findById(tripLeader)
+
+      newTrip.createdBy = leader.ownerId;
+      newTrip.tripLeaderId = leader._id;
+      newTrip.equipmentId = equipmentId;
+      newTrip.defaultImage = defaultImage;
+      newTrip.subImages = subImages;
+      //newTrip.offer = offer;
+      newTrip.status = "upComing";
+      await newTrip.save();
+  
+      await GroupChat.create({
+        tripId: newTrip._id,
+        groupName: newTrip.tripTitle,
+        participants: [tripLeaderId],
+        lastMessage: {
+          text: "Welcome to the trip!",
+          senderId: tripLeaderId,
+          seen: false,
+        },
+      });
+    }
 
   res.status(201).json({
     success: true,
