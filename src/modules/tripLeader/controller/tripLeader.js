@@ -7,6 +7,7 @@ import cloudinary from "../../../utils/cloudinary.js";
 import OwnerModel from "../../../../DB/model/Owner.model .js";
 import tokenModel from "../../../../DB/model/Token.model.js";
 import jwt from "jsonwebtoken";
+import notificationModel from "../../../../DB/model/notification.model.js";
 
 
 export const addTripLeader = asyncHandler(async (req, res, next) => {
