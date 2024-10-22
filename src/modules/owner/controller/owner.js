@@ -15,6 +15,7 @@ import activityModel from "../../../../DB/model/activity.model.js";
 import { typesOfPlaces } from "../../typesOfPlaces/controller/typesOfPlaces.js";
 import typesOfPlacesModel from "../../../../DB/model/typesOfPlaces.model.js";
 import { updateTool } from "../../tool/controller/tool.js";
+import berthModel from "../../../../DB/model/berth.model.js";
 
 const predefinedTypes = [
   { id: "66dcc2b4626dfd336c9d8732", name: { en: "Boats", ar: "مراكب" } },
@@ -1158,5 +1159,62 @@ export const changePassword = asyncHandler(async (req, res, next) => {
   return res.status(200).json({
     success: true,
     message: "Password changed successfully.",
+  });
+});
+
+export const getSingleTrip = asyncHandler(async (req, res, next) => {
+  const { tripId } = req.params;
+
+  // Determine language and select appropriate field
+  const language = req.query.lang || req.headers["accept-language"] || "en";
+  const nameField = language === "ar" ? "name_ar" : "name_en";
+
+  // Find the trip with selected fields and populate necessary references
+  const trip = await tripModel.findById(tripId)
+    .select("startLocation endLocation startDate endDate berh tripTitle addition bedType category typeOfPlace activity tripCode distance status totalEarnings")
+    .populate({
+      path: "addition",
+      select: `${nameField}`, // Select the correct language-based name field
+    })
+    .populate({
+      path: "bedType",
+      select: `${nameField}`, // Select the correct language-based name field
+    })
+    .populate({
+      path: "typeOfPlace",
+      select: `${nameField}`, // Select the correct language-based name field
+    })
+    .populate({
+      path: "category",
+      select: `${nameField}`, // Select the correct language-based name field
+    })
+    .populate({
+      path: "activity",
+      select: `${nameField}`, // Select the correct language-based name field
+    });
+
+  // If trip not found, return 404
+  if (!trip) {
+    return res.status(404).json({ success: false, message: "Trip not found" });
+  }
+
+  // Fetch the berth details using the trip's berh value
+  const berth = await berthModel.findOne({ name: trip.berh }).select("details");
+  
+  // Construct the formatted trip response with proper names
+  const formattedTrip = {
+    ...trip._doc,
+    category: trip.category ? { _id: trip.category._id, name: trip.category[nameField] } : null,
+    typeOfPlace: trip.typeOfPlace ? { _id: trip.typeOfPlace._id, name: trip.typeOfPlace[nameField] } : null,
+    addition: trip.addition.map(add => ({ _id: add._id, name: add[nameField] })), // Use the correct field for name
+    bedType: trip.bedType.map(bed => ({ _id: bed._id, name: bed[nameField] })), // Use the correct field for name
+    activity: trip.activity ? { _id: trip.activity._id, name: trip.activity[nameField] } : null,
+  };
+
+  // Respond with the formatted trip and berth details
+  res.status(200).json({
+    success: true,
+    trip: formattedTrip,
+    berth: berth || null, // Return berth details or null if not found
   });
 });
