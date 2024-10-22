@@ -1417,7 +1417,7 @@ export const getTools = asyncHandler(async (req, res, next) => {
   if (req.owner) {
     tools = await toolModel.find({ createBy: ownerId ,isUpdated:true}).select('_id name type');
   } else if (req.tripLeader) {
-    tools = await toolModel.find({ type: req.tripLeader.typeId,isUpdated:true }).select('_id name type');
+    tools = await toolModel.find({ createBy:req.tripLeader.ownerId ,type: req.tripLeader.typeId,isUpdated:true }).select('_id name type');
   }
 
   return res.status(200).json({ success: true, data: tools });
