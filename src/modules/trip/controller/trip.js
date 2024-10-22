@@ -255,6 +255,10 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     message: ownerId
       ? "Trip created successfully"
       : "Plan New Trip created successfully, waiting for approval",
+      data:{
+        id:newTrip._id,
+        tripCode:newTrip.tripCode
+      }
   });
 });
 

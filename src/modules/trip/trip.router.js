@@ -10,7 +10,7 @@ const router = Router({ mergeParams: true });
 router.post(
   "/createTrip",
   auth,
-  isAuthorized("owner"),
+ // isAuthorized("owner"),
  // validation(validators.createTrip),
   tripController.createTrip
 );
