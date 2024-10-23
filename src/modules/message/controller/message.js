@@ -484,3 +484,33 @@ export const deleteConversation = asyncHandler(async (req, res, next) => {
       .json({ success: true, message: "Group conversation deleted" });
   }
 });
+
+export const seenConversation=asyncHandler(async(req,res,next)=>{
+  const { conversationId } = req.params; 
+
+  const userId = req.user?._id || req.owner?._id || req.tripLeader?._id;
+
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
+  }
+
+  const conversation = await conversationModel.findById(conversationId);
+
+  if (!conversation) {
+    return res.status(404).json({ success: false, message: "Conversation not found" });
+  }
+
+  const isParticipant = conversation.participants.includes(userId);
+  if (!isParticipant) {
+    return res.status(403).json({ success: false, message: "You are not a participant in this conversation" });
+  }
+
+  conversation.lastMessage.seen = true;
+  await conversation.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Last message marked as seen",
+    conversation,
+  });
+})

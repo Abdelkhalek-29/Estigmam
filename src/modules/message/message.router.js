@@ -13,6 +13,7 @@ router.post(
   messageController.sendMessage
 );
 
-router.delete('conversations', messageController.deleteConversation);
-
+router.delete('/:conversationId',auth, messageController.deleteConversation);
+//message seen
+router.patch("/seenConversation/:conversationId",auth,messageController.seenConversation)
 export default router;
