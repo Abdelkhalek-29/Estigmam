@@ -1183,6 +1183,7 @@ export const getSingleTrip = asyncHandler(async (req, res, next) => {
   // Determine language and select appropriate field
   const language = req.query.lang || req.headers["accept-language"] || "en";
   const nameField = language === "ar" ? "name_ar" : "name_en";
+  const descriptionField = language === "ar" ? "description_ar" : "description_en";
 
   // Find the trip by ID and populate necessary fields
   const trip = await tripModel.findById(tripId)
@@ -1191,7 +1192,7 @@ export const getSingleTrip = asyncHandler(async (req, res, next) => {
       { path: "category", select: "name_ar name_en" },
       {
         path: "bedType",
-        select: "name_ar name_en image",  // Ensure to include name in both languages and image
+        select: "name_ar name_en image description_ar description_en",  // Include description in both languages
       },
       {
         path: "addition",
@@ -1216,11 +1217,12 @@ export const getSingleTrip = asyncHandler(async (req, res, next) => {
   const typeOfPlaceName = trip.typeOfPlace ? trip.typeOfPlace[nameField] : "";
   const activityName = trip.activity ? trip.activity[nameField] : "";
 
-  // Transform bedType to include name and image
+  // Transform bedType to include name, image, and description
   const bedTypes = trip.bedType.map((bed) => ({
     _id: bed._id,
     name: bed[nameField],  // Access name based on the language
     image: bed.image,      // Ensure image is included
+    description: bed[descriptionField], // Include description based on the language
   }));
 
   // Transform addition to include name and image
@@ -1253,4 +1255,5 @@ export const getSingleTrip = asyncHandler(async (req, res, next) => {
     data: formattedTrip,
   });
 });
+
 
