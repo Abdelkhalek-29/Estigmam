@@ -565,6 +565,7 @@ export const complete = asyncHandler(async (req, res, next) => {
 export const lastTrips = asyncHandler(async (req, res, next) => {
   const language = req.query.lang || req.headers["accept-language"] || "en";
   const nameField = language === "ar" ? "name_ar" : "name_en";
+  const descriptionField = language === "ar" ? "description_ar" : "description_en";
 
   const filter = {
     ...(req.tripLeader
@@ -587,7 +588,7 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
     })
     .populate({
       path: "bedType",
-      select: "name_ar name_en image",
+      select: "name_ar name_en image description_ar description_en",
       ref: "BedType",
     })
     .populate({
@@ -617,6 +618,8 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
       _id: bed._id,
       name: bed[nameField],  // Access name based on the language
       image: bed.image,      // Ensure image is included
+      description: bed[descriptionField], // Include description based on the language
+
     }));
 
     return {
@@ -1255,5 +1258,3 @@ export const getSingleTrip = asyncHandler(async (req, res, next) => {
     data: formattedTrip,
   });
 });
-
-
