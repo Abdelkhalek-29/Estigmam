@@ -570,7 +570,7 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
     ...(req.tripLeader
       ? { tripLeaderId: req.tripLeader._id }
       : { createBy: req.owner._id }),
-      status: { $nin: ["pending", "rejected"] }, 
+    status: { $nin: ["pending", "rejected"] },
   };
 
   const upcomingTrips = await tripModel
@@ -582,12 +582,12 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
     })
     .populate({
       path: "addition",
-      select: "name Image",
+      select: "name_ar name_en Image",
       ref: "Addition",
     })
     .populate({
       path: "bedType",
-      select: "name description image",
+      select: "name_ar name_en image",
       ref: "BedType",
     })
     .populate({
@@ -603,7 +603,21 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
     .sort({ startDate: -1 });
 
   const transformedTrips = upcomingTrips.map((trip) => {
-    const { typeOfPlace, category } = trip.toObject();
+    const { typeOfPlace, category, addition, bedType } = trip.toObject();
+
+    // Transform addition to include name and image
+    const additions = addition.map((add) => ({
+      _id: add._id,
+      name: add[nameField],  // Access name based on the language
+      image: add.Image,      // Ensure image is included
+    }));
+
+    // Transform bedType to include name and image
+    const bedTypes = bedType.map((bed) => ({
+      _id: bed._id,
+      name: bed[nameField],  // Access name based on the language
+      image: bed.image,      // Ensure image is included
+    }));
 
     return {
       ...trip.toObject(),
@@ -614,8 +628,9 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
       category: {
         _id: category._id,
         name: category[nameField],
-        id: category._id,
       },
+      addition: additions, // Include transformed additions
+      bedType: bedTypes,   // Include transformed bedTypes
     };
   });
 
@@ -1169,13 +1184,19 @@ export const getSingleTrip = asyncHandler(async (req, res, next) => {
   const language = req.query.lang || req.headers["accept-language"] || "en";
   const nameField = language === "ar" ? "name_ar" : "name_en";
 
-  // Find the trip by ID and populate necessary fields, including name and image for bedType and addition
+  // Find the trip by ID and populate necessary fields
   const trip = await tripModel.findById(tripId)
     .populate([
       { path: "typeOfPlace", select: "name_ar name_en" },
       { path: "category", select: "name_ar name_en" },
-      { path: "bedType", select: "name image" }, // Include name and image here
-      { path: "addition", select: "name Image" }, // Include name and image here
+      {
+        path: "bedType",
+        select: "name_ar name_en image",  // Ensure to include name in both languages and image
+      },
+      {
+        path: "addition",
+        select: "name_ar name_en Image",  // Ensure to include name in both languages and image
+      },
       {
         path: "tripLeaderId",
         select: "profileImage _id name tripsCounter averageRating",
@@ -1195,25 +1216,19 @@ export const getSingleTrip = asyncHandler(async (req, res, next) => {
   const typeOfPlaceName = trip.typeOfPlace ? trip.typeOfPlace[nameField] : "";
   const activityName = trip.activity ? trip.activity[nameField] : "";
 
-  const bedTypes = trip.bedType
-    ? Array.isArray(trip.bedType)
-      ? trip.bedType.map((bed) => ({
-          _id: bed._id,
-          name: bed.name,  // Ensure name is included
-          image: bed.image // Ensure image is included
-        }))
-      : [{ _id: trip.bedType._id, name: trip.bedType.name, image: trip.bedType.image }] // Handle case where bedType is not an array
-    : [];
+  // Transform bedType to include name and image
+  const bedTypes = trip.bedType.map((bed) => ({
+    _id: bed._id,
+    name: bed[nameField],  // Access name based on the language
+    image: bed.image,      // Ensure image is included
+  }));
 
-  const additions = trip.addition
-    ? Array.isArray(trip.addition)
-      ? trip.addition.map((add) => ({
-          _id: add._id,
-          name: add.name,  // Ensure name is included
-          image: add.Image // Ensure image is included
-        }))
-      : [{ _id: trip.addition._id, name: trip.addition.name, image: trip.addition.Image }] // Handle case where addition is not an array
-    : [];
+  // Transform addition to include name and image
+  const additions = trip.addition.map((add) => ({
+    _id: add._id,
+    name: add[nameField],  // Access name based on the language
+    image: add.Image,      // Ensure image is included
+  }));
 
   const formattedTrip = {
     ...trip.toObject(),
@@ -1238,3 +1253,4 @@ export const getSingleTrip = asyncHandler(async (req, res, next) => {
     data: formattedTrip,
   });
 });
+
