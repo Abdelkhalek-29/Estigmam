@@ -113,21 +113,20 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     berh,
     descriptionAddress,
     tripTitle,
-   // description,
     priceMember,
     addition = [],
     bedType = [],
     category,
     typeOfPlace,
-    activity=null,
+    activity = null,
     equipmentId,
     tripLeaderId,
-   // cityId,
   } = req.body;
 
   const additionArray = Array.isArray(addition) ? addition : [addition];
   const bedTypeArray = Array.isArray(bedType) ? bedType : [bedType];
 
+  // Validate additions
   for (const addId of additionArray) {
     const add = await additionModel.findById(addId);
     if (!add) {
@@ -135,6 +134,7 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     }
   }
 
+  // Validate bed types
   for (const bedTypeId of bedTypeArray) {
     const bed = await bedTypeModel.findById(bedTypeId);
     if (!bed) {
@@ -142,21 +142,34 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     }
   }
 
+  // Validate type of place
   const type = await typesOfPlacesModel.findById(typeOfPlace);
   if (!type) {
     return next(new Error("TypeOfPlace not found", { cause: 404 }));
   }
 
+  // Validate category
   const categoryExist = await categoryModel.findById(category);
   if (!categoryExist) {
     return next(new Error("Category not found", { cause: 404 }));
   }
 
- /* const cityExist = await cityModel.findById(cityId);
-  if (!cityExist) {
-    return next(new Error("City not found", { cause: 404 }));
-  }*/
+  // Lookup the berth to get the city name
+  const berthFound = await berthModel.findOne({ name: berh });
+  if (!berthFound) {
+    return next(new Error("Berth not found", { cause: 404 }));
+  }
+  
+  // Get the cityId from the berth
+  const cityId = berthFound.cityId;
 
+  // Lookup the city name using cityId
+  const cityFound = await cityModel.findById(cityId);
+  if (!cityFound) {
+    return next(new Error("City not found", { cause: 404 }));
+  }
+  
+  // Calculate trip code and price after offer
   const tripCode = randomstring.generate({
     length: 7,
     charset: "numeric",
@@ -166,6 +179,7 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     priceMember - (priceMember * offer || 0) / 100
   ).toFixed(2);
 
+  // Calculate distance
   const startCoords = {
     latitude: startLocation.Latitude,
     longitude: startLocation.Longitude,
@@ -175,8 +189,9 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     longitude: endLocation.Longitude,
   };
   const distance = haversineDistance(startCoords, endCoords).toFixed(2);
-  const activityId = activity === "" ? null : activity; // handle empty string
+  const activityId = activity === "" ? null : activity;
 
+  // Create a new trip instance
   const newTrip = new tripModel({
     startDate,
     endDate,
@@ -187,29 +202,27 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     berh,
     descriptionAddress,
     tripTitle,
-   // description,
     priceMember,
     addition: additionArray,
     bedType: bedTypeArray,
     category,
     typeOfPlace,
-    activity:activityId,
-  //  cityId,
+    activity: activityId,
     tripCode,
     distance,
     numberOfPeopleAvailable: peopleNumber,
-    isCustomized: false, // Set isCustomized to true here
-    cityId:"66afa86a3f29f73b8385ccdb"
+    isCustomized: false,
+    cityId: cityId, // Store cityId
+    city: cityFound.name, // Store city name
   });
-
 
   const ownerId = req.owner?._id;
   const userId = req.user?._id;
-  const tripLeader=req.tripLeader?._id;
+  const tripLeader = req.tripLeader?._id;
 
   if (ownerId) {
+    // Handle owner logic
     let equipment;
-
     equipment = await toolModel.findById(equipmentId);
     if (!equipment) {
       equipment = await placesModel.findById(equipmentId);
@@ -232,7 +245,6 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     newTrip.equipmentId = equipmentId;
     newTrip.defaultImage = defaultImage;
     newTrip.subImages = subImages;
-    //newTrip.offer = offer;
     newTrip.status = "upComing";
     await newTrip.save();
 
@@ -247,13 +259,13 @@ export const createTrip = asyncHandler(async (req, res, next) => {
       },
     });
   } else if (userId) {
+    // Handle user logic
     newTrip.userId = userId;
     newTrip.status = "pending";
     await newTrip.save();
-  }
-  else if(tripLeader) {
+  } else if (tripLeader) {
+    // Handle trip leader logic
     let equipment;
-
     equipment = await toolModel.findById(equipmentId);
     if (!equipment) {
       equipment = await placesModel.findById(equipmentId);
@@ -270,38 +282,37 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     const subImages = equipment.toolImage
       ? equipment.toolImage.slice(1)
       : equipment.images.slice(1);
-const leader=await tripLeaderModel.findById(tripLeader)
+      
+    const leader = await tripLeaderModel.findById(tripLeader);
+    newTrip.createdBy = leader.ownerId;
+    newTrip.tripLeaderId = leader._id;
+    newTrip.equipmentId = equipmentId;
+    newTrip.defaultImage = defaultImage;
+    newTrip.subImages = subImages;
+    newTrip.status = "upComing";
+    await newTrip.save();
 
-      newTrip.createdBy = leader.ownerId;
-      newTrip.tripLeaderId = leader._id;
-      newTrip.equipmentId = equipmentId;
-      newTrip.defaultImage = defaultImage;
-      newTrip.subImages = subImages;
-      //newTrip.offer = offer;
-      newTrip.status = "upComing";
-      await newTrip.save();
-  
-      await GroupChat.create({
-        tripId: newTrip._id,
-        groupName: newTrip.tripTitle,
-        participants: [tripLeaderId],
-        lastMessage: {
-          text: "Welcome to the trip!",
-          senderId: tripLeaderId,
-          seen: false,
-        },
-      });
-    }
+    await GroupChat.create({
+      tripId: newTrip._id,
+      groupName: newTrip.tripTitle,
+      participants: [tripLeaderId],
+      lastMessage: {
+        text: "Welcome to the trip!",
+        senderId: tripLeaderId,
+        seen: false,
+      },
+    });
+  }
 
   res.status(201).json({
     success: true,
     message: ownerId
       ? "Trip created successfully"
       : "Plan New Trip created successfully, waiting for approval",
-      data:{
-        id:newTrip._id,
-        tripCode:newTrip.tripCode
-      }
+    data: {
+      id: newTrip._id,
+      tripCode: newTrip.tripCode,
+    },
   });
 });
 
