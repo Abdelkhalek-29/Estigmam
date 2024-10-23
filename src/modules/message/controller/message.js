@@ -96,6 +96,11 @@ export const sendMessage = asyncHandler(async (req, res, next) => {
         title: `New message from ${req.user.userName}`,
         body: message,
       },
+      data: {
+        type: 'chat', // Indicate this is a chat message
+        conversationId: conversation._id, // Include conversation ID if necessary
+        senderId: senderId.toString(), // Include sender ID if necessary
+      },
       token: recipientUser.fcmToken,
     };
 
