@@ -29,6 +29,14 @@ const bedTypeSchema = new Schema(
       required: true,
       min: 5,
     },
+     image: {
+      url: {
+        type: String,
+      },
+      id: {
+        type: String,
+      },
+    }
     /*image: {
       url: {
         type: String,

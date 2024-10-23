@@ -146,6 +146,13 @@ const tripSchema = new Schema(
     isFavourite:{
       type:Boolean,
       default:false
+    },
+    description:{
+      type:String,
+      default:""
+    },
+    descriptionAddress:{
+      type:String,
     }
   },
 

@@ -1169,52 +1169,72 @@ export const getSingleTrip = asyncHandler(async (req, res, next) => {
   const language = req.query.lang || req.headers["accept-language"] || "en";
   const nameField = language === "ar" ? "name_ar" : "name_en";
 
-  // Find the trip with selected fields and populate necessary references
+  // Find the trip by ID and populate necessary fields, including name and image for bedType and addition
   const trip = await tripModel.findById(tripId)
-    .select("startLocation endLocation startDate endDate berh tripTitle addition bedType category typeOfPlace activity tripCode distance status totalEarnings")
-    .populate({
-      path: "addition",
-      select: `${nameField}`, // Select the correct language-based name field
-    })
-    .populate({
-      path: "bedType",
-      select: `${nameField}`, // Select the correct language-based name field
-    })
-    .populate({
-      path: "typeOfPlace",
-      select: `${nameField}`, // Select the correct language-based name field
-    })
-    .populate({
-      path: "category",
-      select: `${nameField}`, // Select the correct language-based name field
-    })
-    .populate({
-      path: "activity",
-      select: `${nameField}`, // Select the correct language-based name field
-    });
+    .populate([
+      { path: "typeOfPlace", select: "name_ar name_en" },
+      { path: "category", select: "name_ar name_en" },
+      { path: "bedType", select: "name image" }, // Include name and image here
+      { path: "addition", select: "name Image" }, // Include name and image here
+      {
+        path: "tripLeaderId",
+        select: "profileImage _id name tripsCounter averageRating",
+      },
+      { path: "cityId", select: "name" },
+      { path: "activity", select: "name_ar name_en" },
+    ]);
 
-  // If trip not found, return 404
   if (!trip) {
-    return res.status(404).json({ success: false, message: "Trip not found" });
+    return res.status(404).json({
+      success: false,
+      message: "Trip not found",
+    });
   }
 
-  // Fetch the berth details using the trip's berh value
-  const berth = await berthModel.findOne({ name: trip.berh }).select("details");
-  
-  // Construct the formatted trip response with proper names
+  const categoryName = trip.category ? trip.category[nameField] : "";
+  const typeOfPlaceName = trip.typeOfPlace ? trip.typeOfPlace[nameField] : "";
+  const activityName = trip.activity ? trip.activity[nameField] : "";
+
+  const bedTypes = trip.bedType
+    ? Array.isArray(trip.bedType)
+      ? trip.bedType.map((bed) => ({
+          _id: bed._id,
+          name: bed.name,  // Ensure name is included
+          image: bed.image // Ensure image is included
+        }))
+      : [{ _id: trip.bedType._id, name: trip.bedType.name, image: trip.bedType.image }] // Handle case where bedType is not an array
+    : [];
+
+  const additions = trip.addition
+    ? Array.isArray(trip.addition)
+      ? trip.addition.map((add) => ({
+          _id: add._id,
+          name: add.name,  // Ensure name is included
+          image: add.Image // Ensure image is included
+        }))
+      : [{ _id: trip.addition._id, name: trip.addition.name, image: trip.addition.Image }] // Handle case where addition is not an array
+    : [];
+
   const formattedTrip = {
-    ...trip._doc,
-    category: trip.category ? { _id: trip.category._id, name: trip.category[nameField] } : null,
-    typeOfPlace: trip.typeOfPlace ? { _id: trip.typeOfPlace._id, name: trip.typeOfPlace[nameField] } : null,
-    addition: trip.addition.map(add => ({ _id: add._id, name: add[nameField] })), // Use the correct field for name
-    bedType: trip.bedType.map(bed => ({ _id: bed._id, name: bed[nameField] })), // Use the correct field for name
-    activity: trip.activity ? { _id: trip.activity._id, name: trip.activity[nameField] } : null,
+    ...trip.toObject(),
+    category: {
+      _id: trip.category?._id,
+      name: categoryName,
+    },
+    typeOfPlace: {
+      _id: trip.typeOfPlace?._id,
+      name: typeOfPlaceName,
+    },
+    activity: {
+      _id: trip.activity?._id || "",
+      name: activityName,
+    },
+    bedType: bedTypes,
+    addition: additions,
   };
 
-  // Respond with the formatted trip and berth details
   res.status(200).json({
     success: true,
-    trip: formattedTrip,
-    berth: berth || null, // Return berth details or null if not found
+    data: formattedTrip,
   });
 });

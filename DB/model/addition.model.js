@@ -9,7 +9,14 @@ const additionSchema = new Schema(
     name_ar:{
       type:String,
       required:true
-    }
+    }, Image: {
+      id:{
+       type: String,
+      },
+      url: {   
+       type: String,
+       }
+   },
   },
   { timestamps: true }
 );

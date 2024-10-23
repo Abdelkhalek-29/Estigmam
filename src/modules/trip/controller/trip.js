@@ -199,6 +199,7 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     distance,
     numberOfPeopleAvailable: peopleNumber,
     isCustomized: false, // Set isCustomized to true here
+    cityId:"66afa86a3f29f73b8385ccdb"
   });
 
 
