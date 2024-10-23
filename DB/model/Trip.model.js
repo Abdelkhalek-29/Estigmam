@@ -26,7 +26,7 @@ const tripSchema = new Schema(
     },
     startLocation: { Longitude: { type: Number }, Latitude: { type: Number } },
     endLocation: { Longitude: { type: Number }, Latitude: { type: Number } },
-    cityId: { type: Types.ObjectId, ref: "City"},
+    cityId: { type: Types.ObjectId,ref: "City"},
     berh: { type: String },
    // descriptionAddress: { type: String },
     tripTitle: {
@@ -153,6 +153,10 @@ const tripSchema = new Schema(
     },
     descriptionAddress:{
       type:String,
+    },
+    isLeaderCreate:{
+      type:Boolean,
+      default:false
     }
   },
 

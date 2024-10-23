@@ -289,6 +289,7 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     newTrip.equipmentId = equipmentId;
     newTrip.defaultImage = defaultImage;
     newTrip.subImages = subImages;
+    newTrip.isLeaderCreate=true;
     newTrip.status = "upComing";
     await newTrip.save();
 
