@@ -693,8 +693,8 @@ export const trips = asyncHandler(async (req, res, next) => {
     .populate([
       { path: "typeOfPlace", select: "name_ar name_en" },
       { path: "category", select: "name_ar name_en" },
-      { path: "bedType", select: "name" },
-      { path: "addition", select: "name" },
+      { path: "bedType", select: "name_ar name_en" },
+      { path: "addition", select: "name_ar name_en" },
       {
         path: "tripLeaderId",
         select: "profileImage _id name tripsCounter averageRating",
@@ -709,19 +709,15 @@ export const trips = asyncHandler(async (req, res, next) => {
     const typeOfPlaceName = trip.typeOfPlace ? trip.typeOfPlace[nameField] : "";
     const activityName = trip.activity ? trip.activity[nameField] : "";
 
-    const bedTypes = trip.bedType
-      ? trip.bedType.map((bed) => ({
-          _id: bed._id,
-          name: bed.name,
-        }))
-      : [];
+    const bedTypes = trip.bedType.map((bed) => ({
+      _id: bed._id,
+      name: bed[nameField] || "",
+    }));
 
-    const additions = trip.addition
-      ? trip.addition.map((add) => ({
-          _id: add._id,
-          name: add.name,
-        }))
-      : [];
+    const additions = trip.addition.map((add) => ({
+      _id: add._id,
+      name: add[nameField] || "",
+    }));
 
     return {
       ...trip.toObject(),
@@ -747,6 +743,7 @@ export const trips = asyncHandler(async (req, res, next) => {
     data: formattedTrips,
   });
 });
+
 
 export const getCreatedActivities = asyncHandler(async (req, res, next) => {
   const userId = req.owner.id; // Get the owner ID from the request
