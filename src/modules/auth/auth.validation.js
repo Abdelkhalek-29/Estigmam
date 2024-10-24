@@ -114,6 +114,12 @@ export const login = joi
         "any.required": "Password is required.",
       })
       .required(),
+      fcmToken: joi
+      .string()
+      .optional()
+      .messages({
+        "string.empty": "FCM token cannot be empty.",
+      }),
   })
   .required();
 
