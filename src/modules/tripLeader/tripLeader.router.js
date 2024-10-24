@@ -71,8 +71,8 @@ router.get(
   tripLeaderController.rateDetails
 );
 
-router.post("/deActive/:id",auth,tripLeaderController.deactivateTripLeader)
-router.post("/active/:id",auth,tripLeaderController.activateTripLeader)
+router.patch("/inActive/:id",auth,tripLeaderController.deactivateTripLeader)
+router.patch("/active/:id",auth,tripLeaderController.activateTripLeader)
 router.delete("/:id",auth,tripLeaderController.deleteTripLeader)
 
 export default router;

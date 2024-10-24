@@ -49,7 +49,7 @@ export const addTripLeader = asyncHandler(async (req, res, next) => {
 export const getAllLeaders = asyncHandler(async (req, res, next) => {
   const ownerId = req.owner._id;
 
-  const tripLeaders = await tripLeaderModel.find({ ownerId });
+  const tripLeaders = await tripLeaderModel.find({ ownerId }).select("_id name phone status profileImage")
 
   if (!tripLeaders) {
     return next(
@@ -366,16 +366,16 @@ export const deactivateTripLeader = asyncHandler(async (req, res, next) => {
     return next(new Error("Unauthorized", { status: 403 }));
   }
 
-  if (tripLeader.status === "inactive") {
-    return res.status(400).json({ message: "TripLeader is already inactive" });
+  if (tripLeader.status === "Inactive") {
+    return res.status(400).json({ message: "TripLeader is already Inactive" });
   }
 
-  tripLeader.status = "inactive";
+  tripLeader.status = "Inactive";
   await tripLeader.save();
 
   res.status(200).json({
     success: true,
-    message: "TripLeader status changed to inactive",
+    message: "TripLeader status changed to Inactive",
   });
 });
 
