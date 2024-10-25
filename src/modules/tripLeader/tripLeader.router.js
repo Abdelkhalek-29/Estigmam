@@ -71,12 +71,16 @@ router.get(
   tripLeaderController.rateDetails
 );
 
-router.patch("/inActive/:id",auth,tripLeaderController.deactivateTripLeader)
-router.patch("/active/:id",auth,tripLeaderController.activateTripLeader)
-router.delete("/:id",auth,tripLeaderController.deleteTripLeader)
-router.patch("/edit/:tripLeaderId",auth,
+router.patch("/inActive/:id", auth, tripLeaderController.deactivateTripLeader);
+router.patch("/active/:id", auth, tripLeaderController.activateTripLeader);
+router.delete("/:id", auth, tripLeaderController.deleteTripLeader);
+router.patch(
+  "/edit/:tripLeaderId",
+  auth,
   fileUpload([...fileValidation.file]).fields([
     { name: "IDPhoto", maxCount: 1 },
-    { name: "MaintenanceGuarantee", maxCount: 1 },
-  ]),tripLeaderController.editLeaderInfo)
+  ]),
+  tripLeaderController.editLeaderInfo
+);
+router.get("/info/:tripLeaderId", auth, tripLeaderController.leaederInfo);
 export default router;

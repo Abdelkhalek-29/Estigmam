@@ -32,7 +32,7 @@ const tripLeaderSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["active", "Inactive","pending"],
+      enum: ["active", "Inactive", "pending"],
       default: "pending",
     },
     role: {
@@ -68,8 +68,8 @@ const tripLeaderSchema = new Schema(
       url: { type: String },
       id: { type: String },
     },
-    IDExpireDate:{
-      type:Date,
+    IDExpireDate: {
+      type: Date,
     },
     FictionAndSimile: {
       url: { type: String },
@@ -102,30 +102,29 @@ const tripLeaderSchema = new Schema(
         default: 0,
       },
     },
-    isUpdated:{
-      type:Boolean,
-      default:false
+    isUpdated: {
+      type: Boolean,
+      default: false,
     },
-    createTrip:{
-      type:Boolean,
-      default:true
+    createTrip: {
+      type: Boolean,
+      default: true,
     },
-    section:{
-      type:Types.ObjectId
+    section: {
+      type: Types.ObjectId,
     },
-    infoUpdate:{
-      type:Boolean,
-      default:false
-    },  
+    infoUpdate: {
+      type: Boolean,
+      default: false,
+    },
     leaderCode: {
       code: String,
       discount: {
         type: Types.ObjectId,
         ref: "Discount",
-        default:"66a7c1d406919ff7f43c6ad3"
+        default: "66a7c1d406919ff7f43c6ad3",
       },
     },
-
   },
   { timestamps: true }
 );
