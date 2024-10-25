@@ -425,3 +425,42 @@ export const deleteTripLeader = asyncHandler(async (req, res, next) => {
     message: "TripLeader deleted successfully",
   });
 });
+
+export const editLeaderInfo = asyncHandler(async (req, res, next) => {
+  const ownerId = req.owner._id;
+  const { tripLeaderId } = req.params;
+  const { license, expirationDate, IDExpireDate } = req.body;
+
+  const tripLeader = await tripLeaderModel.findById(tripLeaderId);
+
+  if (!tripLeader) {
+    return next(new Error("Trip Leader not found", { cause: 404 }));
+  }
+
+  const files = req.files;
+  let images = {};
+
+  if (files) {
+    if (files.IDPhoto) {
+      const result = await cloudinary.uploader.upload(files.IDPhoto[0].path, {
+        folder: "tripLeaders/IDPhotos",
+      });
+      images.IDPhoto = { url: result.secure_url, id: result.public_id };
+    }
+    if (files.MaintenanceGuarantee) {
+      const result = await cloudinary.uploader.upload(files.MaintenanceGuarantee[0].path, {
+        folder: "tripLeaders/MaintenanceGuarantee",
+      });
+      images.MaintenanceGuarantee = { url: result.secure_url, id: result.public_id };
+    }
+  }
+
+  tripLeader.license = license || tripLeader.license;
+  tripLeader.expirationDate = expirationDate || tripLeader.expirationDate;
+  tripLeader.MaintenanceGuarantee = images.MaintenanceGuarantee || tripLeader.MaintenanceGuarantee;
+  tripLeader.IDExpireDate = IDExpireDate || tripLeader.IDExpireDate;
+  tripLeader.IDPhoto = images.IDPhoto || tripLeader.IDPhoto;
+
+  await tripLeader.save();
+  res.status(200).json({ success: true, message:"successfully updated"});
+});
