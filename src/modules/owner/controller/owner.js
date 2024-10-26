@@ -162,11 +162,11 @@ export const register = asyncHandler(async (req, res, next) => {
       country: {
         id: countryId._id,
         name: countryId.name,
-        image:countryId.image.url
+        image: countryId.image.url,
       },
       city: {
         id: cityId._id,
-        name: cityId.name, 
+        name: cityId.name,
       },
       phone: user.phone,
       userName: user.userName,
@@ -175,10 +175,10 @@ export const register = asyncHandler(async (req, res, next) => {
       profileImage: user.profileImage,
       isDate: user.isDate,
       id: user._id,
-      ownerInfo:user.ownerInfo,
-      addLeader:user.addLeader,
-      infoUpdate:user.infoUpdate,
-      registerAgreement:user.registerAgreement
+      ownerInfo: user.ownerInfo,
+      addLeader: user.addLeader,
+      infoUpdate: user.infoUpdate,
+      registerAgreement: user.registerAgreement,
     },
   });
 });
@@ -415,10 +415,10 @@ export const VerifyCode = asyncHandler(async (req, res, next) => {
   });
 });
 
-
 export const complete = asyncHandler(async (req, res, next) => {
-  const id  = req.owner._id; // Assume you're getting the owner's ID from the URL
-  const { fullName, email, nationalID, phone, country, city, IDExpireDate } = req.body;
+  const id = req.owner._id; // Assume you're getting the owner's ID from the URL
+  const { fullName, email, nationalID, phone, country, city, IDExpireDate } =
+    req.body;
 
   const owner = await OwnerModel.findById(id)
     .populate("country", "name image")
@@ -432,13 +432,13 @@ export const complete = asyncHandler(async (req, res, next) => {
   owner.email = email || owner.email;
   owner.nationalID = nationalID || owner.nationalID;
   owner.phone = phone || owner.phone;
-  
+
   if (country) {
     owner.countryId = country;
-    }
-    if (city) {
-      owner.cityId = city;
-    }  
+  }
+  if (city) {
+    owner.cityId = city;
+  }
   owner.IDExpireDate = IDExpireDate || owner.IDExpireDate;
   owner.ownerInfo = true;
 
@@ -447,67 +447,80 @@ export const complete = asyncHandler(async (req, res, next) => {
     const fileUploadPromises = [];
 
     if (req.files.IDPhoto && req.files.IDPhoto.length > 0) {
-      const idPhotoUpload = cloudinary.uploader.upload(req.files.IDPhoto[0].path, {
-        resource_type: "raw",
-        folder: `${process.env.FOLDER_CLOUDINARY}/owner/${owner._id}/IDPhotoFile`,
-      }).then((result) => {
-        owner.IDPhoto = {
-          url: result.secure_url,
-          id: result.public_id,
-        };
-      });
+      const idPhotoUpload = cloudinary.uploader
+        .upload(req.files.IDPhoto[0].path, {
+          resource_type: "raw",
+          folder: `${process.env.FOLDER_CLOUDINARY}/owner/${owner._id}/IDPhotoFile`,
+        })
+        .then((result) => {
+          owner.IDPhoto = {
+            url: result.secure_url,
+            id: result.public_id,
+          };
+        });
       fileUploadPromises.push(idPhotoUpload);
     }
 
     if (req.files.FictionAndSimile && req.files.FictionAndSimile.length > 0) {
-      const fictionUpload = cloudinary.uploader.upload(req.files.FictionAndSimile[0].path, {
-        resource_type: "raw",
-        folder: `${process.env.FOLDER_CLOUDINARY}/owner/${owner._id}/FictionAndSimileFile`,
-      }).then((result) => {
-        owner.FictionAndSimile = {
-          url: result.secure_url,
-          id: result.public_id,
-        };
-      });
+      const fictionUpload = cloudinary.uploader
+        .upload(req.files.FictionAndSimile[0].path, {
+          resource_type: "raw",
+          folder: `${process.env.FOLDER_CLOUDINARY}/owner/${owner._id}/FictionAndSimileFile`,
+        })
+        .then((result) => {
+          owner.FictionAndSimile = {
+            url: result.secure_url,
+            id: result.public_id,
+          };
+        });
       fileUploadPromises.push(fictionUpload);
     }
 
-    if (req.files.MaintenanceGuarantee && req.files.MaintenanceGuarantee.length > 0) {
-      const maintenanceUpload = cloudinary.uploader.upload(req.files.MaintenanceGuarantee[0].path, {
-        resource_type: "raw",
-        folder: `${process.env.FOLDER_CLOUDINARY}/owner/${owner._id}/MaintenanceGuaranteeFile`,
-      }).then((result) => {
-        owner.MaintenanceGuarantee = {
-          url: result.secure_url,
-          id: result.public_id,
-        };
-      });
+    if (
+      req.files.MaintenanceGuarantee &&
+      req.files.MaintenanceGuarantee.length > 0
+    ) {
+      const maintenanceUpload = cloudinary.uploader
+        .upload(req.files.MaintenanceGuarantee[0].path, {
+          resource_type: "raw",
+          folder: `${process.env.FOLDER_CLOUDINARY}/owner/${owner._id}/MaintenanceGuaranteeFile`,
+        })
+        .then((result) => {
+          owner.MaintenanceGuarantee = {
+            url: result.secure_url,
+            id: result.public_id,
+          };
+        });
       fileUploadPromises.push(maintenanceUpload);
     }
 
     if (req.files.DrugAnalysis && req.files.DrugAnalysis.length > 0) {
-      const drugAnalysisUpload = cloudinary.uploader.upload(req.files.DrugAnalysis[0].path, {
-        resource_type: "raw",
-        folder: `${process.env.FOLDER_CLOUDINARY}/owner/${owner._id}/DrugAnalysisFile`,
-      }).then((result) => {
-        owner.DrugAnalysis = {
-          url: result.secure_url,
-          id: result.public_id,
-        };
-      });
+      const drugAnalysisUpload = cloudinary.uploader
+        .upload(req.files.DrugAnalysis[0].path, {
+          resource_type: "raw",
+          folder: `${process.env.FOLDER_CLOUDINARY}/owner/${owner._id}/DrugAnalysisFile`,
+        })
+        .then((result) => {
+          owner.DrugAnalysis = {
+            url: result.secure_url,
+            id: result.public_id,
+          };
+        });
       fileUploadPromises.push(drugAnalysisUpload);
     }
 
     if (req.files.profileImage && req.files.profileImage.length > 0) {
-      const profileImageUpload = cloudinary.uploader.upload(req.files.profileImage[0].path, {
-        resource_type: "image",
-        folder: `${process.env.FOLDER_CLOUDINARY}/owner/${owner._id}/profileImageFile`,
-      }).then((result) => {
-        owner.profileImage = {
-          url: result.secure_url,
-          id: result.public_id,
-        };
-      });
+      const profileImageUpload = cloudinary.uploader
+        .upload(req.files.profileImage[0].path, {
+          resource_type: "image",
+          folder: `${process.env.FOLDER_CLOUDINARY}/owner/${owner._id}/profileImageFile`,
+        })
+        .then((result) => {
+          owner.profileImage = {
+            url: result.secure_url,
+            id: result.public_id,
+          };
+        });
       fileUploadPromises.push(profileImageUpload);
     }
 
@@ -518,10 +531,10 @@ export const complete = asyncHandler(async (req, res, next) => {
   // Save updated owner details
   await owner.save();
 
-    const token = jwt.sign(
-      { id: owner._id, phone: owner.phone, role:owner.role },
-      process.env.TOKEN_SIGNATURE
-    );
+  const token = jwt.sign(
+    { id: owner._id, phone: owner.phone, role: owner.role },
+    process.env.TOKEN_SIGNATURE
+  );
   await tokenModel.create({
     token,
     user: owner._id,
@@ -529,20 +542,24 @@ export const complete = asyncHandler(async (req, res, next) => {
   });
 
   const responseData = {
-    token, 
+    token,
     fullName: owner.fullName,
     nationalID: owner.nationalID,
     email: owner.email,
-    userName:owner.userName,
-    country: owner.country ? {
-      id: owner.country._id,
-      name: owner.country.name,
-      image: owner.country.image?.url,
-    } : null,
-    city: owner.city ? {
-      id: owner.city._id,
-      name: owner.city.name,
-    } : null,
+    userName: owner.userName,
+    country: owner.country
+      ? {
+          id: owner.country._id,
+          name: owner.country.name,
+          image: owner.country.image?.url,
+        }
+      : null,
+    city: owner.city
+      ? {
+          id: owner.city._id,
+          name: owner.city.name,
+        }
+      : null,
     phone: owner.phone,
     userName: owner.userName,
     role: owner.role,
@@ -565,12 +582,13 @@ export const complete = asyncHandler(async (req, res, next) => {
 export const lastTrips = asyncHandler(async (req, res, next) => {
   const language = req.query.lang || req.headers["accept-language"] || "en";
   const nameField = language === "ar" ? "name_ar" : "name_en";
-  const descriptionField = language === "ar" ? "description_ar" : "description_en";
+  const descriptionField =
+    language === "ar" ? "description_ar" : "description_en";
 
   const filter = {
     ...(req.tripLeader
       ? { tripLeaderId: req.tripLeader._id }
-      : { createBy: req.owner._id }),
+      : { ownerId: req.owner._id }),
     status: { $nin: ["pending", "rejected"] },
   };
 
@@ -578,7 +596,7 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
     .find(filter)
     .populate({
       path: "tripLeaderId",
-      select: "name profileImage tripsCounter averageRating",
+      select: "name profileImage tripsCounter averageRating ownerId",
       ref: "TripLeader",
     })
     .populate({
@@ -604,36 +622,58 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
     .sort({ startDate: -1 });
 
   const transformedTrips = upcomingTrips.map((trip) => {
-    const { typeOfPlace, category, addition, bedType } = trip.toObject();
+    const { typeOfPlace, category, addition, bedType, tripLeaderId } =
+      trip.toObject();
 
-    // Transform addition to include name and image
-    const additions = addition.map((add) => ({
-      _id: add._id,
-      name: add[nameField],  // Access name based on the language
-      image: add.Image,      // Ensure image is included
-    }));
+    // Prepare tripLeader details
+    const tripLeaderDetails = tripLeaderId
+      ? {
+          name: tripLeaderId.name,
+          profileImage: tripLeaderId.profileImage || null,
+          tripsCounter: tripLeaderId.tripsCounter,
+          averageRating: tripLeaderId.averageRating,
+        }
+      : {
+          // Use owner's information if no valid trip leader is found
+          name: req.owner.fullName,
+          profileImage: req.owner.profileImage || null,
+          tripsCounter: req.owner.tripsCounter,
+          averageRating: req.owner.averageRating,
+          _id: req.owner._id,
+        };
 
-    // Transform bedType to include name and image
-    const bedTypes = bedType.map((bed) => ({
-      _id: bed._id,
-      name: bed[nameField],  // Access name based on the language
-      image: bed.image,      // Ensure image is included
-      description: bed[descriptionField], // Include description based on the language
+    const additions =
+      addition?.map((add) => ({
+        _id: add._id,
+        name: add[nameField],
+        image: add.Image,
+      })) || [];
 
-    }));
+    const bedTypes =
+      bedType?.map((bed) => ({
+        _id: bed._id,
+        name: bed[nameField],
+        image: bed.image,
+        description: bed[descriptionField],
+      })) || [];
 
     return {
       ...trip.toObject(),
-      typeOfPlace: {
-        _id: typeOfPlace._id,
-        name: typeOfPlace[nameField],
-      },
-      category: {
-        _id: category._id,
-        name: category[nameField],
-      },
-      addition: additions, // Include transformed additions
-      bedType: bedTypes,   // Include transformed bedTypes
+      typeOfPlace: typeOfPlace
+        ? {
+            _id: typeOfPlace._id,
+            name: typeOfPlace[nameField],
+          }
+        : null,
+      category: category
+        ? {
+            _id: category._id,
+            name: category[nameField],
+          }
+        : null,
+      addition: additions,
+      bedType: bedTypes,
+      tripLeaderId: tripLeaderDetails,
     };
   });
 
@@ -1040,13 +1080,12 @@ export const registerAgreement = asyncHandler(async (req, res, next) => {
   });
 });
 
-
 export const myProfile = asyncHandler(async (req, res, next) => {
   const ownerId = req.owner?._id; // Optional chaining for `owner`
   const tripLeaderId = req.tripLeader?._id; // Optional chaining for `tripLeader`
 
   // Determine accepted language from the request headers (or fallback to default language)
-  const acceptedLanguage = req.headers['accept-language'] || 'en'; // Assuming 'en' for English if not provided
+  const acceptedLanguage = req.headers["accept-language"] || "en"; // Assuming 'en' for English if not provided
 
   let user;
   let typeData = null; // Initialize typeData
@@ -1067,13 +1106,19 @@ export const myProfile = asyncHandler(async (req, res, next) => {
 
       // If not found in TypesOfPlacesModel, look into the predefinedTypes list
       if (!typeData) {
-        const predefinedType = predefinedTypes.find(type => type.id === user.typeId.toString());
+        const predefinedType = predefinedTypes.find(
+          (type) => type.id === user.typeId.toString()
+        );
         if (predefinedType) {
-          typeName = acceptedLanguage === 'ar' ? predefinedType.name.ar : predefinedType.name.en;
+          typeName =
+            acceptedLanguage === "ar"
+              ? predefinedType.name.ar
+              : predefinedType.name.en;
           typeData = predefinedType; // Use predefinedType for id as well
         }
       } else {
-        typeName = acceptedLanguage === 'ar' ? typeData.name_ar : typeData.name_en;
+        typeName =
+          acceptedLanguage === "ar" ? typeData.name_ar : typeData.name_en;
       }
     }
   } else {
@@ -1091,15 +1136,19 @@ export const myProfile = asyncHandler(async (req, res, next) => {
     IDExpireDate: user.IDExpireDate,
     email: user.email,
     userName: user.userName,
-    country: user.country ? {
-      id: user.country._id,
-      name: user.country.name,
-      image: user.country.image?.url,
-    } : null,
-    city: user.city ? {
-      id: user.city._id,
-      name: user.city.name,
-    } : null,
+    country: user.country
+      ? {
+          id: user.country._id,
+          name: user.country.name,
+          image: user.country.image?.url,
+        }
+      : null,
+    city: user.city
+      ? {
+          id: user.city._id,
+          name: user.city.name,
+        }
+      : null,
     phone: user.phone,
     role: user.role,
     isUpdated: user.isUpdated,
@@ -1115,7 +1164,10 @@ export const myProfile = asyncHandler(async (req, res, next) => {
     ownerInfo: user.ownerInfo,
     addLeader: user.addLeader,
     registerAgreement: user.registerAgreement,
-    type: tripLeaderId && typeData ? { id: typeData._id || typeData.id, name: typeName } : null // Only include `type` for TripLeader
+    type:
+      tripLeaderId && typeData
+        ? { id: typeData._id || typeData.id, name: typeName }
+        : null, // Only include `type` for TripLeader
   };
 
   return res.status(200).json({
@@ -1154,9 +1206,11 @@ export const changePassword = asyncHandler(async (req, res, next) => {
     }
 
     // Hash the new password for Owner
-    const hashedPassword = bcryptjs.hashSync(newPass, Number(process.env.SALT_ROUND));
+    const hashedPassword = bcryptjs.hashSync(
+      newPass,
+      Number(process.env.SALT_ROUND)
+    );
     user.password = hashedPassword;
-
   } else if (req.tripLeader) {
     // TripLeader: Directly compare the oldPass with the stored password (since it's plain text)
     if (oldPass !== user.password) {
@@ -1182,28 +1236,28 @@ export const getSingleTrip = asyncHandler(async (req, res, next) => {
   // Determine language and select appropriate field
   const language = req.query.lang || req.headers["accept-language"] || "en";
   const nameField = language === "ar" ? "name_ar" : "name_en";
-  const descriptionField = language === "ar" ? "description_ar" : "description_en";
+  const descriptionField =
+    language === "ar" ? "description_ar" : "description_en";
 
   // Find the trip by ID and populate necessary fields
-  const trip = await tripModel.findById(tripId)
-    .populate([
-      { path: "typeOfPlace", select: "name_ar name_en" },
-      { path: "category", select: "name_ar name_en" },
-      {
-        path: "bedType",
-        select: "name_ar name_en image description_ar description_en",  // Include description in both languages
-      },
-      {
-        path: "addition",
-        select: "name_ar name_en Image",  // Ensure to include name in both languages and image
-      },
-      {
-        path: "tripLeaderId",
-        select: "profileImage _id name tripsCounter averageRating",
-      },
-      { path: "cityId", select: "name" },
-      { path: "activity", select: "name_ar name_en" },
-    ]);
+  const trip = await tripModel.findById(tripId).populate([
+    { path: "typeOfPlace", select: "name_ar name_en" },
+    { path: "category", select: "name_ar name_en" },
+    {
+      path: "bedType",
+      select: "name_ar name_en image description_ar description_en", // Include description in both languages
+    },
+    {
+      path: "addition",
+      select: "name_ar name_en Image", // Ensure to include name in both languages and image
+    },
+    {
+      path: "tripLeaderId",
+      select: "profileImage _id name tripsCounter averageRating",
+    },
+    { path: "cityId", select: "name" },
+    { path: "activity", select: "name_ar name_en" },
+  ]);
 
   if (!trip) {
     return res.status(404).json({
@@ -1219,16 +1273,16 @@ export const getSingleTrip = asyncHandler(async (req, res, next) => {
   // Transform bedType to include name, image, and description
   const bedTypes = trip.bedType.map((bed) => ({
     _id: bed._id,
-    name: bed[nameField],  // Access name based on the language
-    image: bed.image,      // Ensure image is included
+    name: bed[nameField], // Access name based on the language
+    image: bed.image, // Ensure image is included
     description: bed[descriptionField], // Include description based on the language
   }));
 
   // Transform addition to include name and image
   const additions = trip.addition.map((add) => ({
     _id: add._id,
-    name: add[nameField],  // Access name based on the language
-    image: add.Image,      // Ensure image is included
+    name: add[nameField], // Access name based on the language
+    image: add.Image, // Ensure image is included
   }));
 
   const formattedTrip = {
