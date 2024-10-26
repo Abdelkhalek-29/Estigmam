@@ -632,6 +632,7 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
           profileImage: tripLeaderId.profileImage || null,
           tripsCounter: tripLeaderId.tripsCounter,
           averageRating: tripLeaderId.averageRating,
+          _id: tripLeaderId._id,
         }
       : {
           // Use owner's information if no valid trip leader is found
