@@ -744,7 +744,6 @@ export const trips = asyncHandler(async (req, res, next) => {
   });
 });
 
-
 export const getCreatedActivities = asyncHandler(async (req, res, next) => {
   const userId = req.owner.id; // Get the owner ID from the request
   const language = req.headers["accept-language"] || "en";

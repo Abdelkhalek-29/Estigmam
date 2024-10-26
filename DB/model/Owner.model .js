@@ -124,7 +124,15 @@ const OwnerSchema = new Schema(
     registerAgreement:{
       type:Boolean,
       default:false
-    }
+    },
+    tripsCounter:{
+      type:Number,
+      default:0
+    },
+    averageRating: {
+      type: Number,
+      default: 0,
+    },
   },
   
   { timestamps: true }

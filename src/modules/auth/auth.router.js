@@ -8,7 +8,7 @@ const router = Router();
 
 router.post(
   "/register",
-  validation(Validators.registerSchema),
+  // validation(Validators.registerSchema),
   userController.register
 );
 
@@ -54,7 +54,7 @@ router.patch(
   validation(Validators.resetPassword),
   userController.resetPasswordByCode
 );
-router.get("/",userController.getUser)
+router.get("/", userController.getUser);
 router.get("/userCode", auth, userController.getUserCode);
 router.get("/tokenIsValid", userController.tokenIsValid);
 export default router;

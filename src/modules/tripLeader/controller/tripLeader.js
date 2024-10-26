@@ -8,6 +8,7 @@ import OwnerModel from "../../../../DB/model/Owner.model .js";
 import tokenModel from "../../../../DB/model/Token.model.js";
 import jwt from "jsonwebtoken";
 import notificationModel from "../../../../DB/model/notification.model.js";
+import typesOfPlacesModel from "../../../../DB/model/typesOfPlaces.model.js";
 
 const predefinedTypes = [
   { id: "66dcc2b4626dfd336c9d8732", name: { en: "Boats", ar: "مراكب" } },
@@ -519,11 +520,23 @@ export const leaederInfo = asyncHandler(async (req, res, next) => {
     ? "ar"
     : "en";
 
-  // Find typeId name from predefinedTypes list
-  const typeInfo = predefinedTypes.find(
-    (type) => type.id === tripLeader.typeId?.toString()
-  );
-  const typeName = typeInfo ? typeInfo.name[preferredLanguage] : null;
+  // Search for typeId in typeOfTypeModel
+  let typeName;
+  if (tripLeader.typeId) {
+    const typeRecord = await typesOfPlacesModel
+      .findById(tripLeader.typeId)
+      .select(`name_${preferredLanguage}`);
+    if (typeRecord) {
+      // If found in typeOfTypeModel, use it
+      typeName = typeRecord[`name_${preferredLanguage}`];
+    } else {
+      // Otherwise, fallback to predefinedTypes list
+      const typeInfo = predefinedTypes.find(
+        (type) => type.id === tripLeader.typeId.toString()
+      );
+      typeName = typeInfo ? typeInfo.name[preferredLanguage] : null;
+    }
+  }
 
   const leaderInfo = {
     _id: tripLeader._id,

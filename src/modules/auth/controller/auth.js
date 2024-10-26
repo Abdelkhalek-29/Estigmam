@@ -7,6 +7,7 @@ import userModel from "../../../../DB/model/User.model.js";
 import cityModel from "../../../../DB/model/city.model.js";
 import countryModel from "../../../../DB/model/country.model.js";
 import cloudinary from "../../../utils/cloudinary.js";
+import { sendSMS } from "../../../utils/twilioService.js";
 
 export const register = asyncHandler(async (req, res, next) => {
   const { userName, fullName, email, password, city, country, phone } =
@@ -139,7 +140,7 @@ export const verificationCode = asyncHandler(async (req, res, next) => {
 });
 
 export const login = asyncHandler(async (req, res, next) => {
-  const { phone, password, fcmToken } = req.body; 
+  const { phone, password, fcmToken } = req.body;
 
   const user = await userModel.findOne({
     $or: [{ phone }, { phoneWithCode: phone }],
@@ -157,7 +158,7 @@ export const login = asyncHandler(async (req, res, next) => {
       { id: user._id, email: user.email },
       process.env.TOKEN_SIGNATURE
     );
-    
+
     await tokenModel.create({
       token,
       user: user._id,
