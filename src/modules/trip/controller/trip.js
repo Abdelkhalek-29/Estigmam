@@ -159,7 +159,7 @@ export const createTrip = asyncHandler(async (req, res, next) => {
   if (!berthFound) {
     return next(new Error("Berth not found", { cause: 404 }));
   }
-  
+
   // Get the cityId from the berth
   const cityId = berthFound.cityId;
 
@@ -168,7 +168,7 @@ export const createTrip = asyncHandler(async (req, res, next) => {
   if (!cityFound) {
     return next(new Error("City not found", { cause: 404 }));
   }
-  
+
   // Calculate trip code and price after offer
   const tripCode = randomstring.generate({
     length: 7,
@@ -282,14 +282,14 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     const subImages = equipment.toolImage
       ? equipment.toolImage.slice(1)
       : equipment.images.slice(1);
-      
+
     const leader = await tripLeaderModel.findById(tripLeader);
     newTrip.createdBy = leader.ownerId;
     newTrip.tripLeaderId = leader._id;
     newTrip.equipmentId = equipmentId;
     newTrip.defaultImage = defaultImage;
     newTrip.subImages = subImages;
-    newTrip.isLeaderCreate=true;
+    newTrip.isLeaderCreate = true;
     newTrip.status = "upComing";
     await newTrip.save();
 
@@ -382,7 +382,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
   if (!chatGroup) {
     chatGroup = await GroupChat.create({
       tripId,
-      groupName:"test group chat",
+      groupName: "test group chat",
       participants: [userId],
       lastMessage: {
         text: "Welcome to the trip!",
@@ -984,7 +984,7 @@ export const addRatingAndComment = asyncHandler(async (req, res, next) => {
   }
 
   if (!Array.isArray(trip.ratings)) {
-    trip.ratings = []; 
+    trip.ratings = [];
   }
 
   const newRating = await ratingModel.create({
@@ -1194,36 +1194,36 @@ export const cancel = asyncHandler(async (req, res, next) => {
   });
 });
 
-export const tripsByBerth=asyncHandler(async(req,res,next)=>{
+export const tripsByBerth = asyncHandler(async (req, res, next) => {
   const allBerthsWithTrips = await berthModel.find().lean();
 
   const berthsWithTrips = await Promise.all(
     allBerthsWithTrips.map(async (berth) => {
       const tripsForBerth = await tripModel
-        .find({ berh: berth.name }) 
+        .find({ berh: berth.name })
         .populate({
-          path: 'typeOfPlace',
-          select: 'name_en name_ar', 
+          path: "typeOfPlace",
+          select: "name_en name_ar",
         })
         .populate({
-          path: 'activity',
-          select: 'name_en name_ar', 
+          path: "activity",
+          select: "name_en name_ar",
         })
-        .select('_id startLocation typeOfPlace activity'); 
+        .select("_id startLocation typeOfPlace activity");
 
       return {
         berthName: berth.name,
         numberOfTrips: tripsForBerth.length,
         trips: tripsForBerth.map((trip) => ({
-         _id: trip._id, 
+          _id: trip._id,
           startLocation: trip.startLocation,
           typeOfPlace: trip.typeOfPlace
-            ? req.headers['accept-language'] === 'ar'
+            ? req.headers["accept-language"] === "ar"
               ? trip.typeOfPlace.name_ar
               : trip.typeOfPlace.name_en
             : null,
           activity: trip.activity
-            ? req.headers['accept-language'] === 'ar'
+            ? req.headers["accept-language"] === "ar"
               ? trip.activity.name_ar
               : trip.activity.name_en
             : null,
@@ -1232,36 +1232,53 @@ export const tripsByBerth=asyncHandler(async(req,res,next)=>{
     })
   );
   res.status(200).json({ allBerths: berthsWithTrips });
-})
+});
 
 export const getUpcomingTripsByBerth = asyncHandler(async (req, res) => {
   const { berthName, index } = req.query;
-  const acceptedLanguage = req.headers['accept-language'] === 'ar' ? 'ar' : 'en';
+  const acceptedLanguage =
+    req.headers["accept-language"] === "ar" ? "ar" : "en";
 
   if (!berthName) {
-    return res.status(400).json({ success: false, message: "Berth name is required." });
+    return res
+      .status(400)
+      .json({ success: false, message: "Berth name is required." });
   }
 
   const berth = await berthModel.findOne({ name: berthName });
   if (!berth) {
-    return res.status(404).json({ success: false, message: "Berth not found." });
+    return res
+      .status(404)
+      .json({ success: false, message: "Berth not found." });
   }
 
-  console.log('Berth Details:', berth); // Log berth details for debugging
+  console.log("Berth Details:", berth); // Log berth details for debugging
 
   let query = {
     berh: berth.name,
-    status: 'upComing',
+    status: "upComing",
   };
 
-  if (index && index !== '0') {
+  if (index && index !== "0") {
     const indexMapping = {
-      1: { typeOfPlace: '66dc1b0c37f54a0f875bf3c8', activity: '66dcc2b4626dfd336c9d8732' },
-      2: { typeOfPlace: '66dc1b0c37f54a0f875bf3c8', activity: '66dcc2c6626dfd336c9d873a' },
-      3: { typeOfPlace: '66dc1b1d37f54a0f875bf3cb', activity: '66e2c684b0272ceca8e3118e' },
-      4: { typeOfPlace: '66dc1b1d37f54a0f875bf3cb', activity: '66e2c695b0272ceca8e31196' },
-      5: { typeOfPlace: '66dc1b6737f54a0f875bf3ce' },
-      6: { typeOfPlace: '66dc1ba737f54a0f875bf3d1' },
+      1: {
+        typeOfPlace: "66dc1b0c37f54a0f875bf3c8",
+        activity: "66dcc2b4626dfd336c9d8732",
+      },
+      2: {
+        typeOfPlace: "66dc1b0c37f54a0f875bf3c8",
+        activity: "66dcc2c6626dfd336c9d873a",
+      },
+      3: {
+        typeOfPlace: "66dc1b1d37f54a0f875bf3cb",
+        activity: "66e2c684b0272ceca8e3118e",
+      },
+      4: {
+        typeOfPlace: "66dc1b1d37f54a0f875bf3cb",
+        activity: "66e2c695b0272ceca8e31196",
+      },
+      5: { typeOfPlace: "66dc1b6737f54a0f875bf3ce" },
+      6: { typeOfPlace: "66dc1ba737f54a0f875bf3d1" },
     };
 
     if (indexMapping[index]) {
@@ -1271,17 +1288,20 @@ export const getUpcomingTripsByBerth = asyncHandler(async (req, res) => {
     }
   }
 
-  const trips = await tripModel.find(query)
-    .populate('typeOfPlace', `name_${acceptedLanguage}`)
-    .populate('activity', `name_${acceptedLanguage}`)
-    .select('_id typeOfPlace activity tripLeaderId startLocation');
+  const trips = await tripModel
+    .find(query)
+    .populate("typeOfPlace", `name_${acceptedLanguage}`)
+    .populate("activity", `name_${acceptedLanguage}`)
+    .select("_id typeOfPlace activity tripLeaderId startLocation");
 
   // Generate unique random locations for each trip
   const tripsWithRatings = await Promise.all(
     trips.map(async (trip, index) => {
       let tripLeaderRating = null;
       if (trip.tripLeaderId) {
-        const tripLeader = await tripLeaderModel.findById(trip.tripLeaderId).select('ratings averageRating');
+        const tripLeader = await tripLeaderModel
+          .findById(trip.tripLeaderId)
+          .select("ratings averageRating");
         tripLeaderRating = tripLeader ? tripLeader.averageRating : null;
       }
 
@@ -1292,8 +1312,10 @@ export const getUpcomingTripsByBerth = asyncHandler(async (req, res) => {
       const randomDistance = Math.random() * 0.01; // Small distance (e.g., up to 0.01 degrees)
       const randomAngle = Math.random() * 2 * Math.PI; // Random angle for direction
 
-      const newLatitude = berth.location.Latitude + (randomDistance * Math.sin(randomAngle));
-      const newLongitude = berth.location.Longitude + (randomDistance * Math.cos(randomAngle));
+      const newLatitude =
+        berth.location.Latitude + randomDistance * Math.sin(randomAngle);
+      const newLongitude =
+        berth.location.Longitude + randomDistance * Math.cos(randomAngle);
 
       location = {
         latitude: newLatitude,
@@ -1301,8 +1323,12 @@ export const getUpcomingTripsByBerth = asyncHandler(async (req, res) => {
       };
       return {
         _id: trip._id,
-        typeOfPlace: trip.typeOfPlace ? trip.typeOfPlace[`name_${acceptedLanguage}`] : null,
-        activity: trip.activity ? trip.activity[`name_${acceptedLanguage}`] : null,
+        typeOfPlace: trip.typeOfPlace
+          ? trip.typeOfPlace[`name_${acceptedLanguage}`]
+          : null,
+        activity: trip.activity
+          ? trip.activity[`name_${acceptedLanguage}`]
+          : null,
         tripLeaderRating,
         location: {
           latitude: location.latitude,
@@ -1359,50 +1385,57 @@ export const category = asyncHandler(async (req, res, next) => {
   });
 });
 */
-export const getAllCategoriesWithTypesAndActivities = asyncHandler(async (req, res, next) => {
-  const acceptedLanguage = req.headers['accept-language'] === 'ar' ? 'ar' : 'en';
+export const getAllCategoriesWithTypesAndActivities = asyncHandler(
+  async (req, res, next) => {
+    const acceptedLanguage =
+      req.headers["accept-language"] === "ar" ? "ar" : "en";
 
-  const categories = await categoryModel.find().lean();
+    const categories = await categoryModel.find().lean();
 
-  const result = await Promise.all(
-    categories.map(async (category) => {
-      const typesOfPlaces = await typesOfPlacesModel.find({ categoryId: category._id }).lean();
+    const result = await Promise.all(
+      categories.map(async (category) => {
+        const typesOfPlaces = await typesOfPlacesModel
+          .find({ categoryId: category._id })
+          .lean();
 
-      const mappedTypes = await Promise.all(
-        typesOfPlaces.map(async (type) => {
-          const activities = await activityModel.find({ type: type._id }).lean();
+        const mappedTypes = await Promise.all(
+          typesOfPlaces.map(async (type) => {
+            const activities = await activityModel
+              .find({ type: type._id })
+              .lean();
 
-          const mappedActivities = activities.map((activity) => ({
-            _id: activity._id,
-            name: activity[`name_${acceptedLanguage}`], 
-          }));
+            const mappedActivities = activities.map((activity) => ({
+              _id: activity._id,
+              name: activity[`name_${acceptedLanguage}`],
+            }));
 
-          return {
-            _id: type._id,
-            name: type[`name_${acceptedLanguage}`], 
-            isTool: type.isTool,
-            activities: mappedActivities,
-          };
-        })
-      );
+            return {
+              _id: type._id,
+              name: type[`name_${acceptedLanguage}`],
+              isTool: type.isTool,
+              activities: mappedActivities,
+            };
+          })
+        );
 
-      return {
-        _id: category._id,
-        name: category[`name_${acceptedLanguage}`], 
-        typesOfPlaces: mappedTypes,
-      };
-    })
-  );
+        return {
+          _id: category._id,
+          name: category[`name_${acceptedLanguage}`],
+          typesOfPlaces: mappedTypes,
+        };
+      })
+    );
 
-  return res.status(200).json({
-    success: true,
-    categories: result,
-  });
-});
+    return res.status(200).json({
+      success: true,
+      categories: result,
+    });
+  }
+);
 
 export const getLeaders = asyncHandler(async (req, res, next) => {
   const ownerId = req.owner._id;
-  const { type } = req.params; 
+  const { type } = req.params;
 
   const tool = await toolModel.findOne({ type });
   const place = await placesModel.findOne({ type });
@@ -1410,16 +1443,20 @@ export const getLeaders = asyncHandler(async (req, res, next) => {
   let leaders = [];
 
   if (tool) {
-    leaders = await tripLeaderModel.find({ ownerId, typeId: tool.type }).select('_id name');
+    leaders = await tripLeaderModel
+      .find({ ownerId, typeId: tool.type })
+      .select("_id name");
   } else if (place) {
-    leaders = await tripLeaderModel.find({ ownerId, typeId: place.type }).select('_id name');
-  } 
-  const owner =await OwnerModel.findById(ownerId).select('_id fullName')
+    leaders = await tripLeaderModel
+      .find({ ownerId, typeId: place.type })
+      .select("_id name");
+  }
+  const owner = await OwnerModel.findById(ownerId).select("_id fullName");
   const ownerObject = {
     _id: owner._id,
-    name: owner.fullName 
+    name: owner.fullName,
   };
-  leaders.unshift(ownerObject)
+  leaders.unshift(ownerObject);
   return res.status(200).json({ success: true, data: leaders });
 });
 
@@ -1428,9 +1465,17 @@ export const getTools = asyncHandler(async (req, res, next) => {
 
   let tools;
   if (req.owner) {
-    tools = await toolModel.find({ createBy: ownerId ,isUpdated:true}).select('_id name type');
+    tools = await toolModel
+      .find({ createBy: ownerId, isUpdated: true })
+      .select("_id name type");
   } else if (req.tripLeader) {
-    tools = await toolModel.find({ createBy:req.tripLeader.ownerId ,type: req.tripLeader.typeId,isUpdated:true }).select('_id name type');
+    tools = await toolModel
+      .find({
+        createBy: req.tripLeader.ownerId,
+        type: req.tripLeader.typeId,
+        isUpdated: true,
+      })
+      .select("_id name type");
   }
 
   return res.status(200).json({ success: true, data: tools });
@@ -1441,9 +1486,13 @@ export const getPlaces = asyncHandler(async (req, res, next) => {
 
   let places;
   if (req.owner) {
-    places = await placesModel.find({ createBy: ownerId ,isUpdated:true}).select('_id name type');
+    places = await placesModel
+      .find({ createBy: ownerId, isUpdated: true })
+      .select("_id name type");
   } else if (req.tripLeader) {
-    places = await placesModel.find({ type: req.tripLeader.typeId ,isUpdated:true}).select('_id name type');
+    places = await placesModel
+      .find({ type: req.tripLeader.typeId, isUpdated: true })
+      .select("_id name type");
   }
 
   return res.status(200).json({ success: true, data: places });
