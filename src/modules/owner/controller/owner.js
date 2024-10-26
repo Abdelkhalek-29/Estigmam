@@ -760,6 +760,24 @@ export const trips = asyncHandler(async (req, res, next) => {
       name: add[nameField] || "",
     }));
 
+    const formatLeaderInfo = (leader) => ({
+      _id: leader?._id || null,
+      name: leader?.name || "N/A",
+      profileImage: leader?.profileImage || null,
+      tripsCounter: leader?.tripsCounter || 0,
+      averageRating: leader?.averageRating || 0,
+    });
+
+    const tripLeader = trip.tripLeaderId
+      ? formatLeaderInfo(trip.tripLeaderId)
+      : null;
+    const ownerData = {
+      _id: req.owner._id,
+      name: req.owner.fullName || "N/A",
+      profileImage: req.owner.profileImage || null,
+      tripsCounter: req.owner.tripsCounter || 0,
+      averageRating: req.owner.averageRating || 0,
+    };
     return {
       ...trip.toObject(),
       category: {
@@ -774,8 +792,9 @@ export const trips = asyncHandler(async (req, res, next) => {
         _id: trip.activity?._id || "",
         name: activityName,
       },
-      bedType: bedTypes, // Returning bedType as a list of objects
-      addition: additions, // Returning addition as a list of objects
+      bedType: bedTypes,
+      addition: additions,
+      tripLeaderId: tripLeader || ownerData,
     };
   });
 
@@ -1234,23 +1253,21 @@ export const changePassword = asyncHandler(async (req, res, next) => {
 export const getSingleTrip = asyncHandler(async (req, res, next) => {
   const { tripId } = req.params;
 
-  // Determine language and select appropriate field
   const language = req.query.lang || req.headers["accept-language"] || "en";
   const nameField = language === "ar" ? "name_ar" : "name_en";
   const descriptionField =
     language === "ar" ? "description_ar" : "description_en";
 
-  // Find the trip by ID and populate necessary fields
   const trip = await tripModel.findById(tripId).populate([
     { path: "typeOfPlace", select: "name_ar name_en" },
     { path: "category", select: "name_ar name_en" },
     {
       path: "bedType",
-      select: "name_ar name_en image description_ar description_en", // Include description in both languages
+      select: "name_ar name_en image description_ar description_en",
     },
     {
       path: "addition",
-      select: "name_ar name_en Image", // Ensure to include name in both languages and image
+      select: "name_ar name_en Image",
     },
     {
       path: "tripLeaderId",
@@ -1271,20 +1288,37 @@ export const getSingleTrip = asyncHandler(async (req, res, next) => {
   const typeOfPlaceName = trip.typeOfPlace ? trip.typeOfPlace[nameField] : "";
   const activityName = trip.activity ? trip.activity[nameField] : "";
 
-  // Transform bedType to include name, image, and description
   const bedTypes = trip.bedType.map((bed) => ({
     _id: bed._id,
-    name: bed[nameField], // Access name based on the language
-    image: bed.image, // Ensure image is included
-    description: bed[descriptionField], // Include description based on the language
+    name: bed[nameField],
+    image: bed.image,
+    description: bed[descriptionField],
   }));
 
-  // Transform addition to include name and image
   const additions = trip.addition.map((add) => ({
     _id: add._id,
-    name: add[nameField], // Access name based on the language
-    image: add.Image, // Ensure image is included
+    name: add[nameField],
+    image: add.Image,
   }));
+
+  const formatLeaderInfo = (leader) => ({
+    _id: leader?._id || null,
+    name: leader?.name || "N/A",
+    profileImage: leader?.profileImage || null,
+    tripsCounter: leader?.tripsCounter || 0,
+    averageRating: leader?.averageRating || 0,
+  });
+
+  const tripLeader = trip.tripLeaderId
+    ? formatLeaderInfo(trip.tripLeaderId)
+    : null;
+  const ownerData = {
+    _id: req.owner._id,
+    name: req.owner.fullName || "N/A",
+    profileImage: req.owner.profileImage || null,
+    tripsCounter: req.owner.tripsCounter || 0,
+    averageRating: req.owner.averageRating || 0,
+  };
 
   const formattedTrip = {
     ...trip.toObject(),
@@ -1302,6 +1336,7 @@ export const getSingleTrip = asyncHandler(async (req, res, next) => {
     },
     bedType: bedTypes,
     addition: additions,
+    tripLeaderId: tripLeader || ownerData, // Include the owner data from req.owner
   };
 
   res.status(200).json({
