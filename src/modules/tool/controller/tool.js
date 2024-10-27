@@ -219,42 +219,77 @@ export const deleteTool = asyncHandler(async (req, res, next) => {
 
 export const getAllTools = asyncHandler(async (req, res, next) => {
   const ownerId = req.owner._id;
-  const tools = await toolModel
-    .find({ createBy: ownerId })
-    .populate("type", "name");
-  if (!tools) {
-    res.status(404);
-    return new Error(
-      "Tool not found or you do not have permission to access it"
+  const tools = await toolModel.find({ createBy: ownerId });
+
+  const language = req.headers["accept-language"] === "ar" ? "ar" : "en";
+
+  const toolsWithTypes = tools.map((tool) => {
+    const typeInfo = predefinedTypes.find(
+      (type) => type.id === tool.type.toString()
     );
-  }
+    return {
+      ...tool.toObject(),
+      type: typeInfo ? typeInfo.name[language] : null,
+    };
+  });
 
   res.status(200).json({
     success: true,
     status: 200,
-    data: tools,
+    data: toolsWithTypes,
+  });
+});
+export const myTools = asyncHandler(async (req, res, next) => {
+  const ownerId = req.owner._id;
+  const tools = await toolModel
+    .find({ createBy: ownerId })
+    .select("name _id type");
+
+  const language = req.headers["accept-language"] === "ar" ? "ar" : "en";
+
+  const toolsWithTypes = tools.map((tool) => {
+    const typeInfo = predefinedTypes.find(
+      (type) => type.id === tool.type.toString()
+    );
+    return {
+      _id: tool._id,
+      name: tool.name,
+      type: typeInfo ? typeInfo.name[language] : null,
+    };
+  });
+
+  res.status(200).json({
+    success: true,
+    status: 200,
+    data: toolsWithTypes,
   });
 });
 
 export const getToolById = asyncHandler(async (req, res) => {
+  const language = req.headers["accept-language"] === "ar" ? "ar" : "en";
   const ownerId = req.owner._id;
   const toolId = req.params.id;
 
   const tool = await toolModel
     .findOne({ _id: toolId, createBy: ownerId })
-    .populate("type", "name");
+    .select("-__v");
+  const typeInfo = predefinedTypes.find(
+    (type) => type.id === tool.type?.toString()
+  );
+  const typeName = typeInfo ? typeInfo.name[language] : "Unknown Type";
 
-  if (!tool) {
-    res.status(404);
-    return new Error(
-      "Tool not found or you do not have permission to access it"
-    );
-  }
+  const toolWithTypeName = {
+    ...tool.toObject(),
+    type: {
+      _id: tool.type,
+      name: typeName,
+    },
+  };
 
-  res.status(200).json({
+  return res.status(200).json({
     success: true,
     status: 200,
-    data: tool,
+    data: toolWithTypeName,
   });
 });
 
@@ -299,9 +334,11 @@ export const getUpdatedTools = asyncHandler(async (req, res) => {
     .select(
       "name type section licensePdf licenseNunmber licenseEndDate toolImage toolVideo location portName Examination_date details activityId code isUpdated"
     );
-  const portNames = tools.map(tool => tool.portName);
+  const portNames = tools.map((tool) => tool.portName);
 
-  const berths = await berthModel.find({ name: { $in: portNames } }).select("details name _id")
+  const berths = await berthModel
+    .find({ name: { $in: portNames } })
+    .select("details name _id");
 
   const berthMap = berths.reduce((acc, berth) => {
     acc[berth.name] = berth;
@@ -313,7 +350,7 @@ export const getUpdatedTools = asyncHandler(async (req, res) => {
     section: {
       name: tool.section[language === "ar" ? "name_ar" : "name_en"],
     },
-    berth: berthMap[tool.portName] || null, 
+    berth: berthMap[tool.portName] || null,
   }));
 
   return res.status(200).json({
@@ -321,4 +358,3 @@ export const getUpdatedTools = asyncHandler(async (req, res) => {
     tools: formattedTools,
   });
 });
-

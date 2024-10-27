@@ -46,7 +46,7 @@ router.delete(
 );
 
 router.get("/mytools", auth, isAuthorized("owner"), toolController.getAllTools);
-
+router.get("/mytoolsName", auth, toolController.myTools);
 router.get(
   "/mytool/:id",
   auth,

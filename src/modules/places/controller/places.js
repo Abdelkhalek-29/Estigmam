@@ -157,40 +157,109 @@ export const updatePlace = asyncHandler(async (req, res, next) => {
   });
 });
 export const getAllPlaces = asyncHandler(async (req, res, next) => {
-  const places = await placesModel
-    .find({
-      createBy: req.owner._id,
-    })
-    .select("-__v")
-    .populate({ path: "type", select: "-__v" });
-  if (!places) {
-    return next(new Error("places Not Found!", { cause: 404 }));
-  }
+  const language = req.headers["accept-language"] === "ar" ? "ar" : "en";
+  const ownerId = req.owner._id;
+
+  const types = await typesOfPlacesModel.find().select("name_en name_ar");
+  console.log("Fetched Types:", types);
+
+  const typeMap = types.reduce((acc, type) => {
+    acc[type._id.toString()] = type[`name_${language}`] || "Unknown Type";
+    return acc;
+  }, {});
+
+  console.log("Type Map:", typeMap);
+
+  const places = await placesModel.find({ createBy: ownerId }).select("-__v");
+
+  const placesWithTranslatedTypes = places.map((place) => {
+    const typeIdString = place.type?.toString();
+    const typeName = typeMap[typeIdString] || "Unknown Type";
+    return {
+      ...place.toObject(),
+      type: {
+        _id: place.type,
+        name: typeName,
+      },
+    };
+  });
+
   return res.status(200).json({
     success: true,
     status: 200,
-    message: "All places",
-    data: places,
+    data: placesWithTranslatedTypes,
   });
 });
+
+export const placesName = asyncHandler(async (req, res, next) => {
+  const language = req.headers["accept-language"] === "ar" ? "ar" : "en";
+  const ownerId = req.owner._id;
+
+  const types = await typesOfPlacesModel.find().select("name_en name_ar");
+  const typeMap = types.reduce((acc, type) => {
+    acc[type._id.toString()] = type[`name_${language}`] || "Unknown Type";
+    return acc;
+  }, {});
+
+  const places = await placesModel
+    .find({ createBy: ownerId })
+    .select("name _id type");
+
+  const placesWithTranslatedTypes = places.map((place) => {
+    const typeIdString = place.type?.toString();
+    const typeName = typeMap[typeIdString] || "Unknown Type";
+
+    return {
+      ...place.toObject(),
+      type: {
+        _id: place.type,
+        name: typeName,
+      },
+    };
+  });
+
+  return res.status(200).json({
+    success: true,
+    status: 200,
+    data: placesWithTranslatedTypes,
+  });
+});
+
 export const getPlace = asyncHandler(async (req, res, next) => {
+  const language = req.headers["accept-language"] === "ar" ? "ar" : "en";
+  const placeId = req.params.placeId;
   const place = await placesModel
     .findOne({
-      _id: req.params.placeId,
+      _id: placeId,
       createBy: req.owner._id,
     })
-    .select("-__v")
-    .populate({ path: "type", select: "-__v" });
+    .select("-__v");
+
   if (!place) {
-    return next(new Error("place Not Found!", { cause: 404 }));
+    return next(new Error("Place Not Found!", { cause: 404 }));
   }
+
+  const type = await typesOfPlacesModel
+    .findById(place.type)
+    .select(`name_${language}`);
+  const typeName = type ? type[`name_${language}`] : "Unknown Type";
+
+  const placeWithTypeName = {
+    ...place.toObject(),
+    type: {
+      _id: place.type,
+      name: typeName,
+    },
+  };
+
   return res.status(200).json({
     success: true,
     status: 200,
-    message: "place",
-    data: place,
+    message: "Place retrieved successfully",
+    data: placeWithTypeName,
   });
 });
+
 export const deletePlace = asyncHandler(async (req, res, next) => {
   const place = await placesModel.findOneAndDelete({
     _id: req.params.placeId,
