@@ -280,7 +280,6 @@ export const getToolById = asyncHandler(async (req, res) => {
   const berthDetails = await berthModel
     .find({ name: tool.portName })
     .select("details");
-  console.log(berthDetails);
   const toolWithTypeName = {
     ...tool.toObject(),
     type: {
@@ -289,7 +288,7 @@ export const getToolById = asyncHandler(async (req, res) => {
     },
     portName: {
       name: tool.portName,
-      details: berthDetails,
+      location: berthDetails,
     },
   };
 
