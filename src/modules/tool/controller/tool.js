@@ -277,12 +277,19 @@ export const getToolById = asyncHandler(async (req, res) => {
     (type) => type.id === tool.type?.toString()
   );
   const typeName = typeInfo ? typeInfo.name[language] : "Unknown Type";
-
+  const berthDetails = await berthModel
+    .find({ name: tool.portName })
+    .select("details");
+  console.log(berthDetails);
   const toolWithTypeName = {
     ...tool.toObject(),
     type: {
       _id: tool.type,
       name: typeName,
+    },
+    portName: {
+      name: tool.portName,
+      details: berthDetails,
     },
   };
 
