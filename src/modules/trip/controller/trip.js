@@ -490,62 +490,94 @@ export const getTrip = asyncHandler(async (req, res, next) => {
   const language = req.query.lang || req.headers["accept-language"] || "en";
   const nameField = language === "ar" ? "name_ar" : "name_en";
 
+  const user = req.user
+    ? await userModel.findById(req.user._id).populate("Likes").populate("city")
+    : null;
+
   const trip = await tripModel
     .findById(req.params.tripId)
     .populate({
       path: "tripLeaderId",
       select: "name profileImage tripsCounter averageRating",
+      ref: "TripLeader",
+    })
+    .populate({
+      path: "createdBy",
+      select: "fullName profileImage tripsCounter averageRating",
+      ref: "Owner",
     })
     .populate({
       path: "addition",
-      select: "name",
+      select: `${nameField}`,
+      ref: "Addition",
     })
     .populate({
       path: "bedType",
-      select: "name",
+      select: `${nameField}`,
+      ref: "BedType",
     })
     .populate({
       path: "typeOfPlace",
       select: `${nameField}`,
+      ref: "TypesOfPlaces",
     })
     .populate({
       path: "category",
       select: `${nameField}`,
+      ref: "Category",
     });
 
+  // If trip is not found, send a 404 error
   if (!trip) {
-    return next(new Error("Trip not found", { cause: 404 }));
+    return res.status(404).json({
+      success: false,
+      message: "Trip not found",
+    });
   }
 
-  let isFavourite = false;
-  if (req.user) {
-    const user = await userModel.findById(req.user._id).populate("Likes");
-    if (user) {
-      isFavourite = user.Likes.some(
-        (like) => like._id.toString() === trip._id.toString()
-      );
-    }
-  }
+  // Prepare the trip response including all trip information
+  const prepareTripResponse = (trip) => {
+    const extractName = (obj) => (obj && obj[nameField] ? obj[nameField] : "");
 
-  const tripWithFavourite = {
-    ...trip.toJSON(),
-    isFavourite,
+    return {
+      ...trip.toObject(), // Include all trip information
+      addition: trip.addition.map((add) => ({
+        _id: add._id,
+        name: extractName(add),
+      })),
+      bedType: trip.bedType.map((bed) => ({
+        _id: bed._id,
+        name: extractName(bed),
+      })),
+      category: {
+        _id: trip.category._id,
+        name: extractName(trip.category),
+      },
+      typeOfPlace: {
+        _id: trip.typeOfPlace._id,
+        name: extractName(trip.typeOfPlace),
+      },
+      // Add any additional formatting for other fields if necessary
+    };
   };
 
-  if (tripWithFavourite.typeOfPlace) {
-    tripWithFavourite.typeOfPlace.name =
-      tripWithFavourite.typeOfPlace[nameField];
-    delete tripWithFavourite.typeOfPlace[nameField];
+  const tripData = prepareTripResponse(trip);
+
+  // Check user likes for the trip
+  let userLikes = [];
+  if (user) {
+    userLikes = user.Likes.map((like) => like._id.toString());
   }
 
-  if (tripWithFavourite.category) {
-    tripWithFavourite.category.name = tripWithFavourite.category[nameField];
-    delete tripWithFavourite.category[nameField];
-  }
+  // Determine if the trip is a favorite
+  const isFavourite = userLikes.includes(tripData._id.toString());
 
   res.status(200).json({
     success: true,
-    trip: tripWithFavourite,
+    data: {
+      ...tripData,
+      isFavourite,
+    },
   });
 });
 
@@ -816,7 +848,6 @@ export const getByTypes = asyncHandler(async (req, res, next) => {
     if (tripObject.bedType)
       tripObject.bedType.forEach((bed) => renameField(bed, nameField));
 
-    // Replace tripLeader fields with createdBy if tripLeaderId is null
     if (!tripObject.tripLeaderId && tripObject.createdBy) {
       tripObject.tripLeaderId = {
         _id: tripObject.createdBy._id,
