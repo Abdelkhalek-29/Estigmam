@@ -346,15 +346,23 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
 
   const { userName, email, phone, city, country } = req.body;
 
-  const emailExist = await userModel.findOne({ email });
-  if (emailExist) {
-    return next(new Error("Email already exists!", { cause: 409 }));
-  }
-  const phoneExist = await userModel.findOne({ phone });
-  if (phoneExist) {
-    return next(new Error("Phone already exists!", { cause: 409 }));
+  // Check for email conflict only if the new email is different
+  if (email && email !== user.email) {
+    const emailExist = await userModel.findOne({ email });
+    if (emailExist) {
+      return next(new Error("Email already exists!", { cause: 409 }));
+    }
   }
 
+  // Check for phone conflict only if the new phone is different
+  if (phone && phone !== user.phone) {
+    const phoneExist = await userModel.findOne({ phone });
+    if (phoneExist) {
+      return next(new Error("Phone already exists!", { cause: 409 }));
+    }
+  }
+
+  // Handle country update
   if (country) {
     const countryId = await countryModel.findById(country).select("name image");
     if (!countryId) {
@@ -362,6 +370,8 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
     }
     user.country = countryId;
   }
+
+  // Handle city update
   if (city) {
     const cityId = await cityModel.findById(city).select("name");
     if (!cityId) {
@@ -369,6 +379,8 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
     }
     user.city = cityId;
   }
+
+  // Update other fields
   if (userName) {
     user.userName = userName;
   }
@@ -383,6 +395,7 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
     user.phoneWithCode = countryId.codePhone + phone.slice(1);
   }
 
+  // Handle file upload for profile image
   let fileData = {};
   if (req.file) {
     if (user.profileImage.id === "user_profile_q6je8x.jpg") {
@@ -415,7 +428,10 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
     };
   }
 
+  // Save the updated user information
   await user.save();
+
+  // Return the existing token from headers
   const token = req.headers["token"];
 
   const responseData = {
