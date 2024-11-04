@@ -527,7 +527,6 @@ export const getTrip = asyncHandler(async (req, res, next) => {
       ref: "Category",
     });
 
-  // If trip is not found, send a 404 error
   if (!trip) {
     return res.status(404).json({
       success: false,
@@ -535,12 +534,11 @@ export const getTrip = asyncHandler(async (req, res, next) => {
     });
   }
 
-  // Prepare the trip response including all trip information
   const prepareTripResponse = (trip) => {
     const extractName = (obj) => (obj && obj[nameField] ? obj[nameField] : "");
 
-    return {
-      ...trip.toObject(), // Include all trip information
+    const tripResponse = {
+      ...trip.toObject(),
       addition: trip.addition.map((add) => ({
         _id: add._id,
         name: extractName(add),
@@ -557,19 +555,28 @@ export const getTrip = asyncHandler(async (req, res, next) => {
         _id: trip.typeOfPlace._id,
         name: extractName(trip.typeOfPlace),
       },
-      // Add any additional formatting for other fields if necessary
     };
+
+    if (!tripResponse.tripLeaderId) {
+      tripResponse.tripLeaderId = {
+        _id: trip.createdBy._id,
+        name: trip.createdBy.fullName,
+        profileImage: trip.createdBy.profileImage,
+        tripsCounter: trip.createdBy.tripsCounter,
+        averageRating: trip.createdBy.averageRating,
+      };
+    }
+
+    return tripResponse;
   };
 
   const tripData = prepareTripResponse(trip);
 
-  // Check user likes for the trip
   let userLikes = [];
   if (user) {
     userLikes = user.Likes.map((like) => like._id.toString());
   }
 
-  // Determine if the trip is a favorite
   const isFavourite = userLikes.includes(tripData._id.toString());
 
   res.status(200).json({
