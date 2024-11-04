@@ -426,9 +426,12 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
     country: {
       name: user.country?.name,
       image: user.country?.image,
+      _id: user.country?._id,
+      id: user.country?.id,
     },
     city: {
       name: user.city?.name,
+      _id: user.city?._id,
     },
     token,
     fileData,
