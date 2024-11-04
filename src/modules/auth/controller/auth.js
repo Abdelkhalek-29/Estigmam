@@ -146,7 +146,7 @@ export const login = asyncHandler(async (req, res, next) => {
     .findOne({
       $or: [{ phone }, { phoneWithCode: phone }],
     })
-    .populate("country", "name")
+    .populate("country", "name image")
     .populate("city", "name");
 
   if (!user) {
@@ -335,52 +335,63 @@ export const tokenIsValid = asyncHandler(async (req, res, next) => {
 });
 
 export const updateProfile = asyncHandler(async (req, res, next) => {
-  const user = await userModel.findById(req.user._id);
+  const user = await userModel
+    .findById(req.user._id)
+    .populate("country", "name image")
+    .populate("city", "name");
+
   if (!user) {
     return next(new Error("User Not Found!", { cause: 404 }));
   }
+
   const { userName, email, phone, city, country } = req.body;
 
-  const emailExist = await userModel.findOne({
-    email: email,
-  });
+  // Check if the email already exists
+  const emailExist = await userModel.findOne({ email });
   if (emailExist) {
-    return next(new Error("Email already exist!", { cause: 409 }));
-  }
-  const phoneExist = await userModel.findOne({
-    phone: phone,
-  });
-  if (phoneExist) {
-    return next(new Error("Phone already exist!", { cause: 409 }));
+    return next(new Error("Email already exists!", { cause: 409 }));
   }
 
+  // Check if the phone number already exists
+  const phoneExist = await userModel.findOne({ phone });
+  if (phoneExist) {
+    return next(new Error("Phone already exists!", { cause: 409 }));
+  }
+
+  // Update country if provided
   if (country) {
-    const countryId = await countryModel.findById(country);
+    const countryId = await countryModel.findById(country).select("name image");
     if (!countryId) {
       return next(new Error("Country Not Found!", { cause: 404 }));
     }
-    user.country = country || user.country;
+    user.country = countryId; // Assign the country object instead of just the ID
   }
+
+  // Update city if provided
   if (city) {
-    const cityId = await cityModel.findById(city);
+    const cityId = await cityModel.findById(city).select("name");
     if (!cityId) {
       return next(new Error("City Not Found!", { cause: 404 }));
     }
-    user.city = city || user.city;
+    user.city = cityId; // Assign the city object instead of just the ID
   }
+
+  // Update other fields
   if (userName) {
-    user.userName = userName || user.userName;
+    user.userName = userName;
   }
   if (email) {
-    user.email = email || user.email;
+    user.email = email;
   }
   if (phone) {
     const countryId = await countryModel.findOne({
       $or: [{ _id: country }, { _id: user.country }],
     });
-    user.phone = phone || user.phone;
+    user.phone = phone;
     user.phoneWithCode = countryId.codePhone + phone.slice(1);
   }
+
+  // Handle file upload
   let fileData = {};
   if (req.file) {
     if (user.profileImage.id === "user_profile_q6je8x.jpg") {
@@ -412,21 +423,30 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
       fieldname: req.file.fieldname || "",
     };
   }
+
   await user.save();
+
+  // Prepare the response data including country and city names and images
+  const responseData = {
+    userName: user.userName,
+    phone: user.phone,
+    email: user.email,
+    profileImage: user.profileImage,
+    country: {
+      name: user.country?.name,
+      image: user.country?.image,
+    },
+    city: {
+      name: user.city?.name,
+    },
+    fileData,
+  };
 
   return res.status(200).json({
     success: true,
     status: 200,
     message: "Profile Updated!",
-
-    data: {
-      userName: user.userName,
-      phone: user.phone,
-      email: user.email,
-      profileImage: user.profileImage,
-      token: req.headers["token"],
-      fileData,
-    },
+    data: responseData,
   });
 });
 
