@@ -142,9 +142,12 @@ export const verificationCode = asyncHandler(async (req, res, next) => {
 export const login = asyncHandler(async (req, res, next) => {
   const { phone, password, fcmToken } = req.body;
 
-  const user = await userModel.findOne({
-    $or: [{ phone }, { phoneWithCode: phone }],
-  });
+  const user = await userModel
+    .findOne({
+      $or: [{ phone }, { phoneWithCode: phone }],
+    })
+    .populate("country", "name")
+    .populate("city", "name");
 
   if (!user) {
     return next(new Error("Phone not found", { cause: 400 }));
@@ -207,6 +210,8 @@ export const login = asyncHandler(async (req, res, next) => {
       email: user.email,
       profileImage: user.profileImage,
       token,
+      country: user.country,
+      city: user.city,
       fileData: {},
     },
   });
