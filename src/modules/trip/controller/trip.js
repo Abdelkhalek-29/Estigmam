@@ -851,7 +851,6 @@ export const home = asyncHandler(async (req, res, next) => {
 
   const nameField = language === "ar" ? "name_ar" : "name_en";
 
-  // Fetch types for the given category
   const types = await typesOfPlacesModel
     .find({ categoryId })
     .select(`${nameField} image`);
@@ -860,7 +859,6 @@ export const home = asyncHandler(async (req, res, next) => {
     return next(new Error("Types not found", { status: 404 }));
   }
 
-  // Fetch trips with offers for the given category
   const trips = await tripModel
     .find({ offer: { $gt: 0 }, category: categoryId })
     .populate("tripLeaderId", "name profileImage tripsCounter averageRating")
@@ -881,12 +879,8 @@ export const home = asyncHandler(async (req, res, next) => {
         path: "type",
         select: `${nameField} _id`,
       },
-      options: { strictPopulate: false }, // Allow population for non-schema fields
+      options: { strictPopulate: false },
     });
-
-  if (!trips || trips.length === 0) {
-    return next(new Error("No offers found", { status: 404 }));
-  }
 
   const banner = await bannerModel.find({ categoryId });
   if (!banner || banner.length === 0) {
@@ -923,12 +917,12 @@ export const home = asyncHandler(async (req, res, next) => {
 
       tripObject.activity = {
         _id: tripObject.activity._id,
-        name: `${typeName} ${activityName}`.trim(), // Combine type and activity names
+        name: `${typeName} ${activityName}`.trim(),
       };
     } else {
       tripObject.activity = {
         _id: "",
-        name: "", // Default to empty string if activity does not exist
+        name: "",
       };
     }
 
