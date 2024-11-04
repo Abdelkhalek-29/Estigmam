@@ -346,37 +346,29 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
 
   const { userName, email, phone, city, country } = req.body;
 
-  // Check if the email already exists
   const emailExist = await userModel.findOne({ email });
   if (emailExist) {
     return next(new Error("Email already exists!", { cause: 409 }));
   }
-
-  // Check if the phone number already exists
   const phoneExist = await userModel.findOne({ phone });
   if (phoneExist) {
     return next(new Error("Phone already exists!", { cause: 409 }));
   }
 
-  // Update country if provided
   if (country) {
     const countryId = await countryModel.findById(country).select("name image");
     if (!countryId) {
       return next(new Error("Country Not Found!", { cause: 404 }));
     }
-    user.country = countryId; // Assign the country object instead of just the ID
+    user.country = countryId;
   }
-
-  // Update city if provided
   if (city) {
     const cityId = await cityModel.findById(city).select("name");
     if (!cityId) {
       return next(new Error("City Not Found!", { cause: 404 }));
     }
-    user.city = cityId; // Assign the city object instead of just the ID
+    user.city = cityId;
   }
-
-  // Update other fields
   if (userName) {
     user.userName = userName;
   }
@@ -391,7 +383,6 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
     user.phoneWithCode = countryId.codePhone + phone.slice(1);
   }
 
-  // Handle file upload
   let fileData = {};
   if (req.file) {
     if (user.profileImage.id === "user_profile_q6je8x.jpg") {
@@ -425,8 +416,8 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
   }
 
   await user.save();
+  const token = req.headers["token"];
 
-  // Prepare the response data including country and city names and images
   const responseData = {
     userName: user.userName,
     phone: user.phone,
@@ -439,6 +430,7 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
     city: {
       name: user.city?.name,
     },
+    token,
     fileData,
   };
 
