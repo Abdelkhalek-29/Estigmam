@@ -697,7 +697,6 @@ export const getTripByOffer = asyncHandler(async (req, res, next) => {
 export const getByTypes = asyncHandler(async (req, res, next) => {
   const { typeOfPlaceId } = req.params;
   const { city, sortBy, sortOrder } = req.query;
-
   const language = req.query.lang || req.headers["accept-language"] || "en";
   const nameField = language === "ar" ? "name_ar" : "name_en";
 
@@ -734,23 +733,28 @@ export const getByTypes = asyncHandler(async (req, res, next) => {
       ref: "TripLeader",
     })
     .populate({
+      path: "createdBy",
+      select: "fullName profileImage tripsCounter averageRating",
+      ref: "Owner",
+    })
+    .populate({
       path: "addition",
-      select: "name",
+      select: `${nameField}`,
       ref: "Addition",
     })
     .populate({
       path: "bedType",
-      select: "name",
+      select: `${nameField}`,
       ref: "BedType",
     })
     .populate({
       path: "typeOfPlace",
-      select: nameField,
+      select: `${nameField}`,
       ref: "TypesOfPlaces",
     })
     .populate({
       path: "category",
-      select: nameField,
+      select: `${nameField}`,
       ref: "Category",
     });
 
@@ -787,22 +791,6 @@ export const getByTypes = asyncHandler(async (req, res, next) => {
         ? bDuration - aDuration
         : aDuration - bDuration;
     });
-  } else if (sortBy === "averageRating") {
-    trips.sort((a, b) => {
-      return sortOrder === "desc"
-        ? b.tripLeaderId.averageRating - a.tripLeaderId.averageRating
-        : a.tripLeaderId.averageRating - b.tripLeaderId.averageRating;
-    });
-  } else {
-    trips.sort((a, b) => {
-      for (const key in sortOptions) {
-        if (sortOptions[key] !== 0) {
-          if (a[key] < b[key]) return sortOptions[key] * -1;
-          if (a[key] > b[key]) return sortOptions[key];
-        }
-      }
-      return 0;
-    });
   }
 
   let userLikes = [];
@@ -811,17 +799,32 @@ export const getByTypes = asyncHandler(async (req, res, next) => {
   }
 
   const tripsWithFavourite = trips.map((trip) => {
-    const tripObject = trip.toJSON();
+    const tripObject = trip.toObject();
     const isFavourite = userLikes.includes(tripObject._id.toString());
 
-    if (tripObject.typeOfPlace) {
-      tripObject.typeOfPlace.name = tripObject.typeOfPlace[nameField];
-      delete tripObject.typeOfPlace[nameField];
-    }
+    const renameField = (obj, field) => {
+      if (obj && obj[field]) {
+        obj.name = obj[field];
+        delete obj[nameField];
+      }
+    };
 
-    if (tripObject.category) {
-      tripObject.category.name = tripObject.category[nameField];
-      delete tripObject.category[nameField];
+    if (tripObject.typeOfPlace) renameField(tripObject.typeOfPlace, nameField);
+    if (tripObject.category) renameField(tripObject.category, nameField);
+    if (tripObject.addition)
+      tripObject.addition.forEach((add) => renameField(add, nameField));
+    if (tripObject.bedType)
+      tripObject.bedType.forEach((bed) => renameField(bed, nameField));
+
+    // Replace tripLeader fields with createdBy if tripLeaderId is null
+    if (!tripObject.tripLeaderId && tripObject.createdBy) {
+      tripObject.tripLeaderId = {
+        _id: tripObject.createdBy._id,
+        name: tripObject.createdBy.fullName,
+        profileImage: tripObject.createdBy.profileImage,
+        tripsCounter: tripObject.createdBy.tripsCounter,
+        averageRating: tripObject.createdBy.averageRating,
+      };
     }
 
     return {
@@ -835,6 +838,7 @@ export const getByTypes = asyncHandler(async (req, res, next) => {
     data: tripsWithFavourite,
   });
 });
+
 /*export const getRate=asyncHandler(async(req.res.next) => {
   const { tripId } = req.params;
 
