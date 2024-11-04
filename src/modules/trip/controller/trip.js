@@ -1050,10 +1050,28 @@ export const rateDetails = asyncHandler(async (req, res, next) => {
   if (!trip) {
     return next(new Error("Trip not found", { status: 404 }));
   }
-
-  const captin = await tripLeaderModel
+  const tripLeader = await tripLeaderModel
     .findById(trip.tripLeaderId)
     .select("name profileImage averageRating tripsCounter");
+
+  let captin;
+  if (tripLeader) {
+    captin = tripLeader;
+  } else {
+    const owner = await OwnerModel.findById(trip.createdBy).select(
+      "fullName profileImage averageRating tripsCounter"
+    );
+
+    if (owner) {
+      captin = {
+        _id: owner._id,
+        name: owner.fullName,
+        profileImage: owner.profileImage,
+        averageRating: owner.averageRating,
+        tripsCounter: owner.tripsCounter,
+      };
+    }
+  }
 
   const ratings = await ratingModel
     .find({ leader: captin._id })
