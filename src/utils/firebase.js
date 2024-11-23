@@ -1,12 +1,16 @@
 import admin from "firebase-admin";
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
+import fs from "fs/promises";
 
-// Use require to import the JSON file
-const serviceAccount = require("../../config/estigmam-d058e-firebase-adminsdk-qn1e0-4c73a80468.json");
+// Replace with the correct path to your service account JSON file
+const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_PATH;
+
+// Read the service account JSON file
+const serviceAccount = JSON.parse(await fs.readFile(serviceAccountPath));
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-export default admin;
+const messaging = admin.messaging();
+
+export { messaging };

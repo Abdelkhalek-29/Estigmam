@@ -6,21 +6,24 @@ const messageSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "Conversation",
     },
+    groupId: {
+      type: Schema.Types.ObjectId,
+      ref: "GroupChat", // This field links to the group chat if it's a group message
+    },
     senderId: {
       type: Schema.Types.ObjectId,
-     // ref: "User",
     },
     text: {
       type: String,
     },
     seen: {
-			type: Boolean,
-			default: false,
-		},
-	// 	img: {
+      type: Boolean,
+      default: false,
+    },
+    // 	img: {
     //   id: String,
     //   url: String,
-	// 	},
+    // 	},
   },
   { timestamps: true }
 );

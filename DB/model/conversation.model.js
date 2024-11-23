@@ -12,11 +12,17 @@ const conversationSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "Trip",
     },
+    isGroup: {
+      type: Boolean,
+      required: true,
+      default: false, // Default for private chats
+    },
     lastMessage: {
       text: String,
-      senderId: { type: Schema.Types.ObjectId, 
-        // ref: "User" 
-        },
+      senderId: {
+        type: Schema.Types.ObjectId,
+        // ref: "User"
+      },
       seen: {
         type: Boolean,
         default: false,

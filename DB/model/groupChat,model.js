@@ -12,23 +12,29 @@ const groupChatSchema = new Schema(
       type: String,
       required: true,
     },
-    lastMessage: {
-        text: String,
-        senderId: { type: Schema.Types.ObjectId, 
-          // ref: "User" 
-          },
-        seen: {
-          type: Boolean,
-          default: false,
-        },
+    groupImage: {
+      url: {
+        type: String,
+        default: null,
       },
+      id: {
+        type: String,
+        default: null,
+      },
+    },
+    lastMessage: {
+      senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      text: { type: String },
+      seen: { type: Boolean, default: false },
+    },
     tripId: {
       type: Schema.Types.ObjectId,
-      ref: "Trip", 
+      ref: "Trip",
     },
   },
   { timestamps: true }
 );
 
-const GroupChat = mongoose.models.GroupChat || model("GroupChat", groupChatSchema);
+const GroupChat =
+  mongoose.models.GroupChat || model("GroupChat", groupChatSchema);
 export default GroupChat;

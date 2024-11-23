@@ -109,7 +109,6 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     peopleNumber,
     startLocation,
     endLocation,
-    offer,
     berh,
     descriptionAddress,
     tripTitle,
@@ -118,80 +117,20 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     bedType = [],
     category,
     typeOfPlace,
-    activity = null,
     equipmentId,
     tripLeaderId,
+    offer,
   } = req.body;
 
-  const additionArray = Array.isArray(addition) ? addition : [addition];
-  const bedTypeArray = Array.isArray(bedType) ? bedType : [bedType];
-
-  // Validate additions
-  for (const addId of additionArray) {
-    const add = await additionModel.findById(addId);
-    if (!add) {
-      return next(new Error("Addition not found", { cause: 404 }));
-    }
-  }
-
-  // Validate bed types
-  for (const bedTypeId of bedTypeArray) {
-    const bed = await bedTypeModel.findById(bedTypeId);
-    if (!bed) {
-      return next(new Error("BedType not found", { cause: 404 }));
-    }
-  }
-
-  // Validate type of place
-  const type = await typesOfPlacesModel.findById(typeOfPlace);
-  if (!type) {
-    return next(new Error("TypeOfPlace not found", { cause: 404 }));
-  }
-
-  // Validate category
-  const categoryExist = await categoryModel.findById(category);
-  if (!categoryExist) {
-    return next(new Error("Category not found", { cause: 404 }));
-  }
-
-  // Lookup the berth to get the city name
-  const berthFound = await berthModel.findOne({ name: berh });
-  if (!berthFound) {
-    return next(new Error("Berth not found", { cause: 404 }));
-  }
-
-  // Get the cityId from the berth
-  const cityId = berthFound.cityId;
-
-  // Lookup the city name using cityId
-  const cityFound = await cityModel.findById(cityId);
-  if (!cityFound) {
-    return next(new Error("City not found", { cause: 404 }));
-  }
-
-  // Calculate trip code and price after offer
-  const tripCode = randomstring.generate({
-    length: 7,
-    charset: "numeric",
-  });
-
+  const tripCode = randomstring.generate({ length: 7, charset: "numeric" });
   const priceAfterOffer = Number.parseFloat(
-    priceMember - (priceMember * offer || 0) / 100
+    priceMember - (priceMember * (offer || 0)) / 100
   ).toFixed(2);
 
-  // Calculate distance
-  const startCoords = {
-    latitude: startLocation.Latitude,
-    longitude: startLocation.Longitude,
-  };
-  const endCoords = {
-    latitude: endLocation.Latitude,
-    longitude: endLocation.Longitude,
-  };
-  const distance = haversineDistance(startCoords, endCoords).toFixed(2);
-  const activityId = activity === "" ? null : activity;
+  const ownerId = req.owner?._id;
+  const userId = req.user?._id;
+  const tripLeader = req.tripLeader?._id;
 
-  // Create a new trip instance
   const newTrip = new tripModel({
     startDate,
     endDate,
@@ -203,86 +142,42 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     descriptionAddress,
     tripTitle,
     priceMember,
-    addition: additionArray,
-    bedType: bedTypeArray,
+    addition,
+    bedType,
     category,
     typeOfPlace,
-    activity: activityId,
     tripCode,
-    distance,
     numberOfPeopleAvailable: peopleNumber,
-    isCustomized: false,
-    cityId: cityId, // Store cityId
-    city: cityFound.name, // Store city name
+    city: berh,
+    offer,
   });
 
-  const ownerId = req.owner?._id;
-  const userId = req.user?._id;
-  const tripLeader = req.tripLeader?._id;
+  let defaultImage, subImages;
 
-  if (ownerId) {
-    // Handle owner logic
-    let equipment;
-    equipment = await toolModel.findById(equipmentId);
-    if (!equipment) {
-      equipment = await placesModel.findById(equipmentId);
-      if (!equipment) {
-        equipment = await activityModel.findById(equipmentId);
-        if (!equipment) {
-          return next(new Error("Equipment not found", { cause: 404 }));
-        }
-      }
-    }
-    const defaultImage = equipment.toolImage
+  let equipment;
+  equipment = await toolModel.findById(equipmentId);
+  if (!equipment) {
+    equipment = await placesModel.findById(equipmentId);
+  }
+  if (equipment) {
+    defaultImage = equipment.toolImage
       ? equipment.toolImage[0]
       : equipment.images[0];
-    const subImages = equipment.toolImage
+    subImages = equipment.toolImage
       ? equipment.toolImage.slice(1)
       : equipment.images.slice(1);
-
+  }
+  if (ownerId) {
     newTrip.createdBy = ownerId;
     newTrip.tripLeaderId = tripLeaderId;
     newTrip.equipmentId = equipmentId;
     newTrip.defaultImage = defaultImage;
     newTrip.subImages = subImages;
     newTrip.status = "upComing";
-    await newTrip.save();
-
-    await GroupChat.create({
-      tripId: newTrip._id,
-      groupName: newTrip.tripTitle,
-      participants: [tripLeaderId],
-      lastMessage: {
-        text: "Welcome to the trip!",
-        senderId: tripLeaderId,
-        seen: false,
-      },
-    });
   } else if (userId) {
-    // Handle user logic
     newTrip.userId = userId;
     newTrip.status = "pending";
-    await newTrip.save();
   } else if (tripLeader) {
-    // Handle trip leader logic
-    let equipment;
-    equipment = await toolModel.findById(equipmentId);
-    if (!equipment) {
-      equipment = await placesModel.findById(equipmentId);
-      if (!equipment) {
-        equipment = await activityModel.findById(equipmentId);
-        if (!equipment) {
-          return next(new Error("Equipment not found", { cause: 404 }));
-        }
-      }
-    }
-    const defaultImage = equipment.toolImage
-      ? equipment.toolImage[0]
-      : equipment.images[0];
-    const subImages = equipment.toolImage
-      ? equipment.toolImage.slice(1)
-      : equipment.images.slice(1);
-
     const leader = await tripLeaderModel.findById(tripLeader);
     newTrip.createdBy = leader.ownerId;
     newTrip.tripLeaderId = leader._id;
@@ -291,19 +186,23 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     newTrip.subImages = subImages;
     newTrip.isLeaderCreate = true;
     newTrip.status = "upComing";
-    await newTrip.save();
-
-    await GroupChat.create({
-      tripId: newTrip._id,
-      groupName: newTrip.tripTitle,
-      participants: [tripLeaderId],
-      lastMessage: {
-        text: "Welcome to the trip!",
-        senderId: tripLeaderId,
-        seen: false,
-      },
-    });
   }
+
+  await newTrip.save();
+
+  const groupImage = newTrip.defaultImage;
+
+  await GroupChat.create({
+    tripId: newTrip._id,
+    groupName: newTrip.tripTitle,
+    participants: [tripLeaderId || userId || ownerId],
+    lastMessage: {
+      text: "Welcome to the trip!",
+      senderId: tripLeaderId || userId || ownerId,
+      seen: false,
+    },
+    groupImage: groupImage,
+  });
 
   res.status(201).json({
     success: true,

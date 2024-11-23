@@ -585,7 +585,6 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
   const descriptionField =
     language === "ar" ? "description_ar" : "description_en";
 
-  // Determine the filter based on whether it's a trip leader or owner
   const filter = {
     ...(req.tripLeader
       ? { tripLeaderId: req.tripLeader._id }
@@ -593,10 +592,8 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
     status: { $nin: ["pending", "rejected"] },
   };
 
-  // Log the filter for debugging
   console.log("Filter for trips:", filter);
 
-  // Fetch the trips based on the filter
   const upcomingTrips = await tripModel
     .find(filter)
     .populate({
@@ -626,14 +623,11 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
     })
     .sort({ startDate: -1 });
 
-  // Log the retrieved trips for debugging
-  console.log("Retrieved Trips:", upcomingTrips);
 
   const transformedTrips = upcomingTrips.map((trip) => {
     const { typeOfPlace, category, addition, bedType, tripLeaderId } =
       trip.toObject();
 
-    // Prepare tripLeader details
     const tripLeaderDetails = tripLeaderId
       ? {
           name: tripLeaderId.name,
@@ -643,7 +637,6 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
           _id: tripLeaderId._id,
         }
       : {
-          // Use owner's information if no valid trip leader is found
           name: req.owner.fullName,
           profileImage: req.owner.profileImage || null,
           tripsCounter: req.owner.tripsCounter || 0,
@@ -686,7 +679,6 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
     };
   });
 
-  // Return the transformed trips
   res.status(200).json({
     success: true,
     data: transformedTrips,
