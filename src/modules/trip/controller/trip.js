@@ -1,8 +1,6 @@
 import categoryModel from "../../../../DB/model/category.model.js";
-import subCategoryModel from "../../../../DB/model/places.model.js";
 import { asyncHandler } from "../../../utils/errorHandling.js";
 import cloudinary from "../../../utils/cloudinary.js";
-import { nanoid } from "nanoid";
 import tripModel from "../../../../DB/model/Trip.model.js";
 import userModel from "../../../../DB/model/User.model.js";
 import transactionsModel from "../../../../DB/model/transactions.model.js";
@@ -25,83 +23,6 @@ import GroupChat from "../../../../DB/model/groupChat,model.js";
 import berthModel from "../../../../DB/model/berth.model.js";
 import { getRandomLocationInCircle } from "../../../utils/RandomLocation.js";
 
-/*export const createTrip = asyncHandler(async (req, res, next) => {
-  if (!req.files) {
-    return res.status(401).json({ message: "No data provided" });
-  }
-  const {
-    startDate,
-    endDate,
-    description,
-    peopleNumber,
-    tripTitle,
-
-    priceMember,
-    descriptionAddress,
-    offer,
-    category,
-    subCategory,
-  } = req.body;
-  const categoryExist = await categoryModel.findById(category);
-  if (!categoryExist) {
-    return next(new Error("Category not found!", { cause: 404 }));
-  }
-
-  const subCategoryExist = await subCategoryModel.findById(subCategory);
-  if (!subCategoryExist) {
-    return next(new Error("SubCategory not found!", { cause: 404 }));
-  }
-  if (!req.files) {
-    return next(new Error("trip images is required", { cause: 400 }));
-  }
-  const cloudFolder = nanoid();
-  let images = [];
-  for (const file of req.files.subImages) {
-    const { secure_url, public_id } = await cloudinary.uploader.upload(
-      file.path,
-      { folder: `${process.env.FOLDER_CLOUDINARY}/Trips/${cloudFolder}` }
-    );
-    images.push({ url: secure_url, id: public_id });
-  }
-
-  const { secure_url, public_id } = await cloudinary.uploader.upload(
-    req.files.defaultImage[0].path,
-    {
-      folder: `${process.env.FOLDER_CLOUDINARY}/Trips/${cloudFolder}`,
-    }
-  );
-
-  const trip = await tripModel.create({
-    startDate,
-    endDate,
-    description,
-    peopleNumber,
-    tripTitle,
-    priceMember,
-    offer,
-    category,
-    subCategory,
-    berth: {
-      Longitude: parseFloat(req.body.Latitude),
-      Latitude: parseFloat(req.body.Longitude),
-    },
-    descriptionAddress,
-    cloudFolder,
-    createdBy: req.owner._id,
-    defaultImage: { url: secure_url, id: public_id },
-    subImages: images,
-    numberOfPeopleAvailable: peopleNumber,
-  });
-  if (trip.offer > 0) {
-    trip.priceAfterOffer = trip.finalPrice;
-    await trip.save();
-  }
-  await OwnerModel.findByIdAndUpdate(req.owner._id, {
-    $inc: { numberTrip: 1 },
-  });
-  return res.status(201).json({ success: true, trip });
-});*/
-
 export const createTrip = asyncHandler(async (req, res, next) => {
   const {
     startDate,
@@ -119,7 +40,10 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     typeOfPlace,
     equipmentId,
     tripLeaderId,
+    notes,
     offer,
+    startLocationDetails,
+    endLocationDetails,
   } = req.body;
 
   const tripCode = randomstring.generate({ length: 7, charset: "numeric" });
@@ -131,6 +55,61 @@ export const createTrip = asyncHandler(async (req, res, next) => {
   const userId = req.user?._id;
   const tripLeader = req.tripLeader?._id;
 
+  let startLocationDetailsResult = null;
+  let endLocationDetailsResult = null;
+  let distance = null;
+
+  // Log the coordinates to ensure they are correct
+  console.log("Start Location:", startLocation);
+  console.log("End Location:", endLocation);
+
+  // Search for startLocation in berthModel
+  const startBerth = await berthModel.findOne({
+    location: {
+      Longitude: startLocation.longitude,
+      Latitude: startLocation.latitude,
+    },
+  });
+
+  // Search for endLocation in berthModel
+  const endBerth = await berthModel.findOne({
+    location: {
+      Longitude: endLocation.longitude,
+      Latitude: endLocation.latitude,
+    },
+  });
+
+  if (startBerth) {
+    startLocationDetailsResult = {
+      details: startBerth.details,
+    };
+  } else {
+    startLocationDetailsResult = startLocationDetails || null; // Get from user input if no berth match
+  }
+
+  if (endBerth) {
+    endLocationDetailsResult = {
+      details: endBerth.details,
+    };
+  } else {
+    endLocationDetailsResult = endLocationDetails || null; // Get from user input if no berth match
+  }
+  if (
+    startLocation.latitude &&
+    startLocation.longitude &&
+    endLocation.latitude &&
+    endLocation.longitude
+  ) {
+    distance = haversineDistance(
+      { latitude: startLocation.latitude, longitude: startLocation.longitude },
+      { latitude: endLocation.latitude, longitude: endLocation.longitude }
+    );
+    console.log("Calculated Distance:", distance);
+  } else {
+    console.error("Invalid coordinates for startLocation or endLocation");
+  }
+
+  // Create the new trip
   const newTrip = new tripModel({
     startDate,
     endDate,
@@ -150,10 +129,12 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     numberOfPeopleAvailable: peopleNumber,
     city: berh,
     offer,
+    startLocationDetails: startLocationDetailsResult,
+    endLocationDetails: endLocationDetailsResult,
+    distance,
   });
 
   let defaultImage, subImages;
-
   let equipment;
   equipment = await toolModel.findById(equipmentId);
   if (!equipment) {
@@ -167,6 +148,7 @@ export const createTrip = asyncHandler(async (req, res, next) => {
       ? equipment.toolImage.slice(1)
       : equipment.images.slice(1);
   }
+
   if (ownerId) {
     newTrip.createdBy = ownerId;
     newTrip.tripLeaderId = tripLeaderId;
@@ -175,7 +157,9 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     newTrip.subImages = subImages;
     newTrip.status = "upComing";
   } else if (userId) {
+    newTrip.notes = notes;
     newTrip.userId = userId;
+    newTrip.isCustomized = true;
     newTrip.status = "pending";
   } else if (tripLeader) {
     const leader = await tripLeaderModel.findById(tripLeader);
@@ -188,10 +172,12 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     newTrip.status = "upComing";
   }
 
+  // Save the new trip
   await newTrip.save();
 
   const groupImage = newTrip.defaultImage;
 
+  // Create group chat for the trip
   await GroupChat.create({
     tripId: newTrip._id,
     groupName: newTrip.tripTitle,
@@ -204,6 +190,7 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     groupImage: groupImage,
   });
 
+  // Respond with the created trip data
   res.status(201).json({
     success: true,
     message: ownerId

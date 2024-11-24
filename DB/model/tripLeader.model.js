@@ -125,6 +125,10 @@ const tripLeaderSchema = new Schema(
         default: "66a7c1d406919ff7f43c6ad3",
       },
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

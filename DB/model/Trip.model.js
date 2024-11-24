@@ -26,9 +26,9 @@ const tripSchema = new Schema(
     },
     startLocation: { Longitude: { type: Number }, Latitude: { type: Number } },
     endLocation: { Longitude: { type: Number }, Latitude: { type: Number } },
-    cityId: { type: Types.ObjectId,ref: "City"},
+    cityId: { type: Types.ObjectId, ref: "City" },
     berh: { type: String },
-   // descriptionAddress: { type: String },
+    // descriptionAddress: { type: String },
     tripTitle: {
       type: String,
       min: 3,
@@ -45,7 +45,7 @@ const tripSchema = new Schema(
       {
         type: Types.ObjectId,
         ref: "Addition",
-        default:""
+        default: "",
       },
     ],
     bedType: [{ type: Types.ObjectId, ref: "BedType" }],
@@ -63,7 +63,7 @@ const tripSchema = new Schema(
       type: Number,
       min: 0,
       max: 100,
-      default:0,
+      default: 0,
     },
     priceAfterOffer: {
       type: Number,
@@ -78,10 +78,10 @@ const tripSchema = new Schema(
       ref: "Category",
       required: true,
     },
-    isCustomized:{
-      type:Boolean,
-      required:true,
-      default:false
+    isCustomized: {
+      type: Boolean,
+      required: true,
+      default: false,
     },
     /*subCategory: {
       type: Types.ObjectId,
@@ -103,7 +103,7 @@ const tripSchema = new Schema(
     activity: {
       type: Types.ObjectId,
       ref: "Activity",
-      default: null // Use null to indicate the absence of a reference
+      default: null, // Use null to indicate the absence of a reference
     },
     equipmentId: {
       type: Types.ObjectId,
@@ -123,7 +123,15 @@ const tripSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["completed", "pending", "confirmed", "cancelled", "rejected","current","upComing"],
+      enum: [
+        "completed",
+        "pending",
+        "confirmed",
+        "cancelled",
+        "rejected",
+        "current",
+        "upComing",
+      ],
       default: "confirmed",
     },
     //ratings: [{ type: Types.ObjectId, ref: "Rating" }],
@@ -143,21 +151,30 @@ const tripSchema = new Schema(
       ref: "User",
     },
     city: String,
-    isFavourite:{
-      type:Boolean,
-      default:false
+    isFavourite: {
+      type: Boolean,
+      default: false,
     },
-    description:{
-      type:String,
-      default:""
+    description: {
+      type: String,
+      default: "",
     },
-    descriptionAddress:{
-      type:String,
+    descriptionAddress: {
+      type: String,
     },
-    isLeaderCreate:{
-      type:Boolean,
-      default:false
-    }
+    isLeaderCreate: {
+      type: Boolean,
+      default: false,
+    },
+    notes: {
+      type: String,
+    },
+    startLocationDetails: {
+      type: String,
+    },
+    endLocationDetails: {
+      type: String,
+    },
   },
 
   {

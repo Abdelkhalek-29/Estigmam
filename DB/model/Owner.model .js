@@ -25,7 +25,7 @@ const OwnerSchema = new Schema(
       discount: {
         type: Types.ObjectId,
         ref: "Discount",
-        default:"66a7c1d406919ff7f43c6ad3"
+        default: "66a7c1d406919ff7f43c6ad3",
       },
     },
     numberTrips: {
@@ -59,7 +59,7 @@ const OwnerSchema = new Schema(
       type: String,
       unique: true,
     },
-   
+
     forgetCode: String,
     profileImage: {
       url: {
@@ -76,8 +76,8 @@ const OwnerSchema = new Schema(
       url: { type: String },
       id: { type: String },
     },
-    IDExpireDate:{
-      type:Date,
+    IDExpireDate: {
+      type: Date,
     },
     FictionAndSimile: {
       url: { type: String },
@@ -105,36 +105,40 @@ const OwnerSchema = new Schema(
         default: 0,
       },
     },
-    isUpdated:{
-      type:Boolean,
-      default:false
+    isUpdated: {
+      type: Boolean,
+      default: false,
     },
-    isDate:{
-      type:Boolean,
-      default:false
+    isDate: {
+      type: Boolean,
+      default: false,
     },
-    ownerInfo:{
-      type:Boolean,
-      default:false
+    ownerInfo: {
+      type: Boolean,
+      default: false,
     },
-    addLeader:{
-      type:Boolean,
-      default:false
+    addLeader: {
+      type: Boolean,
+      default: false,
     },
-    registerAgreement:{
-      type:Boolean,
-      default:false
+    registerAgreement: {
+      type: Boolean,
+      default: false,
     },
-    tripsCounter:{
-      type:Number,
-      default:0
+    tripsCounter: {
+      type: Number,
+      default: 0,
     },
     averageRating: {
       type: Number,
       default: 0,
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
-  
+
   { timestamps: true }
 );
 
