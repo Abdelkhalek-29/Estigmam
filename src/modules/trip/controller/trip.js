@@ -23,7 +23,7 @@ import GroupChat from "../../../../DB/model/groupChat,model.js";
 import berthModel from "../../../../DB/model/berth.model.js";
 import { getRandomLocationInCircle } from "../../../utils/RandomLocation.js";
 
-export const createTrip = asyncHandler(async (req, res, next) => {
+export const createTrip = asyncHandler(async (req, res) => {
   const {
     startDate,
     endDate,
@@ -42,8 +42,8 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     tripLeaderId,
     notes,
     offer,
-    startLocationDetails,
-    endLocationDetails,
+    startLocationDetails, // Provided by the user
+    endLocationDetails, // Provided by the user
   } = req.body;
 
   const tripCode = randomstring.generate({ length: 7, charset: "numeric" });
@@ -55,61 +55,56 @@ export const createTrip = asyncHandler(async (req, res, next) => {
   const userId = req.user?._id;
   const tripLeader = req.tripLeader?._id;
 
-  let startLocationDetailsResult = null;
-  let endLocationDetailsResult = null;
-  let distance = null;
-
-  // Log the coordinates to ensure they are correct
-  console.log("Start Location:", startLocation);
-  console.log("End Location:", endLocation);
-
-  // Search for startLocation in berthModel
-  const startBerth = await berthModel.findOne({
-    location: {
-      Longitude: startLocation.longitude,
-      Latitude: startLocation.latitude,
-    },
+  // Match startLocation with a berth
+  let matchedStartBerth = await berthModel.findOne({
+    "location.Latitude": startLocation?.Latitude,
+    "location.Longitude": startLocation?.Longitude,
   });
 
-  // Search for endLocation in berthModel
-  const endBerth = await berthModel.findOne({
-    location: {
-      Longitude: endLocation.longitude,
-      Latitude: endLocation.latitude,
-    },
+  const resolvedStartLocationDetails = matchedStartBerth
+    ? {
+        details: matchedStartBerth.details,
+        berthId: matchedStartBerth._id,
+        name: matchedStartBerth.name,
+        images: matchedStartBerth.images,
+      }
+    : startLocationDetails;
+
+  // Match endLocation with a berth
+  let matchedEndBerth = await berthModel.findOne({
+    "location.Latitude": endLocation?.Latitude,
+    "location.Longitude": endLocation?.Longitude,
   });
 
-  if (startBerth) {
-    startLocationDetailsResult = {
-      details: startBerth.details,
-    };
-  } else {
-    startLocationDetailsResult = startLocationDetails || null; // Get from user input if no berth match
-  }
+  const resolvedEndLocationDetails = matchedEndBerth
+    ? {
+        details: matchedEndBerth.details,
+        berthId: matchedEndBerth._id,
+        name: matchedEndBerth.name,
+        images: matchedEndBerth.images,
+      }
+    : endLocationDetails;
 
-  if (endBerth) {
-    endLocationDetailsResult = {
-      details: endBerth.details,
-    };
-  } else {
-    endLocationDetailsResult = endLocationDetails || null; // Get from user input if no berth match
+  // Safely access the 'details' property
+  const startLocationDetailsString =
+    resolvedStartLocationDetails?.details || "N/A";
+  const endLocationDetailsString = resolvedEndLocationDetails?.details || "N/A";
+
+  let cityId = matchedStartBerth?.cityId || matchedEndBerth?.cityId || null;
+  let cityName = null;
+  if (cityId) {
+    const city = await cityModel.findById(cityId);
+    cityName = city?.name || null;
   }
+  let distance = 0;
   if (
-    startLocation.latitude &&
-    startLocation.longitude &&
-    endLocation.latitude &&
-    endLocation.longitude
-  ) {
-    distance = haversineDistance(
-      { latitude: startLocation.latitude, longitude: startLocation.longitude },
-      { latitude: endLocation.latitude, longitude: endLocation.longitude }
-    );
-    console.log("Calculated Distance:", distance);
-  } else {
-    console.error("Invalid coordinates for startLocation or endLocation");
-  }
-
-  // Create the new trip
+    startLocation?.Latitude &&
+    startLocation?.Longitude &&
+    endLocation?.Latitude &&
+    endLocation?.Longitude
+  )
+    distance = haversineDistance(startLocation, endLocation);
+  const city = await cityModel.findById(cityId).select("name");
   const newTrip = new tripModel({
     startDate,
     endDate,
@@ -127,57 +122,54 @@ export const createTrip = asyncHandler(async (req, res, next) => {
     typeOfPlace,
     tripCode,
     numberOfPeopleAvailable: peopleNumber,
-    city: berh,
+    cityId,
+    city: city.name,
     offer,
-    startLocationDetails: startLocationDetailsResult,
-    endLocationDetails: endLocationDetailsResult,
-    distance,
+    startLocationDetails: startLocationDetailsString,
+    endLocationDetails: endLocationDetailsString,
+    distance: parseFloat(distance.toFixed(2)),
   });
 
+  // Handle equipment and images
   let defaultImage, subImages;
-  let equipment;
-  equipment = await toolModel.findById(equipmentId);
-  if (!equipment) {
-    equipment = await placesModel.findById(equipmentId);
-  }
-  if (equipment) {
-    defaultImage = equipment.toolImage
-      ? equipment.toolImage[0]
-      : equipment.images[0];
-    subImages = equipment.toolImage
-      ? equipment.toolImage.slice(1)
-      : equipment.images.slice(1);
-  }
+  let equipment =
+    (await toolModel.findById(equipmentId)) ||
+    (await placesModel.findById(equipmentId));
 
+  if (equipment) {
+    defaultImage = equipment.toolImage?.[0] || equipment.images?.[0];
+    subImages = equipment.toolImage?.slice(1) || equipment.images?.slice(1);
+  }
   if (ownerId) {
-    newTrip.createdBy = ownerId;
-    newTrip.tripLeaderId = tripLeaderId;
-    newTrip.equipmentId = equipmentId;
-    newTrip.defaultImage = defaultImage;
-    newTrip.subImages = subImages;
-    newTrip.status = "upComing";
+    Object.assign(newTrip, {
+      createdBy: ownerId,
+      tripLeaderId,
+      equipmentId,
+      defaultImage,
+      subImages,
+      status: "upComing",
+    });
   } else if (userId) {
-    newTrip.notes = notes;
-    newTrip.userId = userId;
-    newTrip.isCustomized = true;
-    newTrip.status = "pending";
+    Object.assign(newTrip, {
+      notes,
+      userId,
+      isCustomized: true,
+      status: "pending",
+    });
   } else if (tripLeader) {
     const leader = await tripLeaderModel.findById(tripLeader);
-    newTrip.createdBy = leader.ownerId;
-    newTrip.tripLeaderId = leader._id;
-    newTrip.equipmentId = equipmentId;
-    newTrip.defaultImage = defaultImage;
-    newTrip.subImages = subImages;
-    newTrip.isLeaderCreate = true;
-    newTrip.status = "upComing";
+    Object.assign(newTrip, {
+      createdBy: leader.ownerId,
+      tripLeaderId: leader._id,
+      equipmentId,
+      defaultImage,
+      subImages,
+      isLeaderCreate: true,
+      status: "upComing",
+    });
   }
 
-  // Save the new trip
   await newTrip.save();
-
-  const groupImage = newTrip.defaultImage;
-
-  // Create group chat for the trip
   await GroupChat.create({
     tripId: newTrip._id,
     groupName: newTrip.tripTitle,
@@ -187,10 +179,9 @@ export const createTrip = asyncHandler(async (req, res, next) => {
       senderId: tripLeaderId || userId || ownerId,
       seen: false,
     },
-    groupImage: groupImage,
+    groupImage: newTrip.defaultImage,
   });
 
-  // Respond with the created trip data
   res.status(201).json({
     success: true,
     message: ownerId

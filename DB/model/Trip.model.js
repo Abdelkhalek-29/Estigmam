@@ -108,6 +108,9 @@ const tripSchema = new Schema(
     equipmentId: {
       type: Types.ObjectId,
     },
+    city: {
+      type: String,
+    },
     tripLeaderId: {
       type: Types.ObjectId,
       ref: "TripLeader",
