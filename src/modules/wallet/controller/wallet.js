@@ -9,6 +9,7 @@ import {
 } from "../../../utils/payment.js";
 import OwnerModel from "../../../../DB/model/Owner.model .js";
 import tripLeaderModel from "../../../../DB/model/tripLeader.model.js";
+import bankModel from "../../../../DB/model/bank.model.js";
 
 export const charging = asyncHandler(async (req, res, next) => {
   const userId = req.user._id;
@@ -323,5 +324,33 @@ export const ownerWallet = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     data: { userBalance, transactions },
+  });
+});
+
+export const addBank = asyncHandler(async (req, res, next) => {
+  const { name_ar, name_en } = req.body;
+
+  const bank = await bankModel.create({ name_ar, name_en });
+  res.status(200).json({
+    success: true,
+    message: "Bank addded successfully !",
+  });
+});
+
+export const getBanks = asyncHandler(async (req, res, next) => {
+  const acceptLanguage = req.headers["accept-language"] || "en";
+  const languageKey = acceptLanguage.toLowerCase().startsWith("ar")
+    ? "name_ar"
+    : "name_en";
+
+  const banks = await bankModel.find().select(`${languageKey}`);
+
+  const formattedBanks = banks.map((bank) => ({
+    name: bank[languageKey],
+  }));
+
+  res.status(200).json({
+    success: true,
+    data: formattedBanks,
   });
 });

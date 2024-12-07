@@ -1,12 +1,9 @@
 import noonClient from "./noon.js";
 
-// Helper function to format amount
 const formatAmount = (amount) => {
-  // Ensure amount is a number and has exactly 2 decimal places
   return Number(parseFloat(amount).toFixed(2));
 };
 
-// Helper function to validate amount
 const validateAmount = (amount) => {
   const numAmount = Number(amount);
   if (isNaN(numAmount) || numAmount <= 0) {
@@ -16,7 +13,6 @@ const validateAmount = (amount) => {
 };
 
 export const initiateCardPaymentService = async (params) => {
-  console.log("Initiating Card Payment with Amount:", params.amount);
   try {
     const validAmount = validateAmount(params.amount);
     const formattedAmount = formatAmount(validAmount);
@@ -37,7 +33,6 @@ export const initiateCardPaymentService = async (params) => {
         locale: "en",
       },
     });
-    console.log("Noon API Response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Noon API Error:", error.response?.data || error.message);
