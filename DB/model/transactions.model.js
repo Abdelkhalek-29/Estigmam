@@ -1,37 +1,26 @@
 import mongoose, { Schema, Types, model } from "mongoose";
-const transactionsSchema = new Schema(
+const transactionSchema = new Schema(
   {
-    userId: {
-      type: Types.ObjectId,
-      ref: "user",
-    },
-    price: {
-      type: Number,
+    actorId: { type: Types.ObjectId, required: true },
+    actorType: {
+      type: String,
+      enum: ["User", "Owner", "TripLeader"],
       required: true,
     },
-    nameTransaction: {
+    amount: { type: Number, required: true },
+    type: { type: String, enum: ["Wallet", "Trip"], required: true },
+    method: {
       type: String,
-      required: true,
+      enum: ["Card", "APPle", "Google", "PayPal", "Wallet"],
     },
-    status: {
-      type: String,
-      enum: ["Withdraw", "Deposit"],
-      required: true,
-    },
-    type: {
-      type: String,
-      required: true,
-    },
-    date: {
-      type: String,
-    },
-    transactionId: {
-      type: String,
-    },
+    tripId: { type: Types.ObjectId },
+    reason: { type: String },
+    date: { type: Date, default: Date.now },
+    transactionId: { type: Number },
   },
   { timestamps: true }
 );
 
-const transactionsModel =
-  mongoose.models.transactionsModel || model("transaction", transactionsSchema);
-export default transactionsModel;
+const transactionModel =
+  mongoose.models.transactionModel || model("transaction", transactionSchema);
+export default transactionModel;

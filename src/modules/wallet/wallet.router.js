@@ -5,15 +5,8 @@ import * as validators from "./wallet.validation.js";
 import auth from "../../middleware/auth.js";
 
 const router = Router();
-
-router.put(
-  "/Deposit",
-  auth,
-  //   validation(validators.addInfoApp),
-  walletController.Deposit
-);
-router.get("/transactionHistory", auth, walletController.transactionHistory);
-router.delete("/:transactionId", auth, walletController.deleteTransaction);
-router.get("/wallet", auth, walletController.getWallet);
+// User APP
+router.post("/charge", auth, walletController.charging);
+router.get("/userWallet", auth, walletController.userWallet);
 
 export default router;

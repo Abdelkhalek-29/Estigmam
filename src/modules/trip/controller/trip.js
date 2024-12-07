@@ -22,6 +22,12 @@ import conversationModel from "../../../../DB/model/conversation.model.js";
 import GroupChat from "../../../../DB/model/groupChat,model.js";
 import berthModel from "../../../../DB/model/berth.model.js";
 import { getRandomLocationInCircle } from "../../../utils/RandomLocation.js";
+import {
+  initiateApplePayPaymentService,
+  initiateCardPaymentService,
+  initiateGooglePayPaymentService,
+  initiatePayPalPaymentService,
+} from "../../../utils/payment.js";
 
 export const createTrip = asyncHandler(async (req, res) => {
   const {
@@ -196,7 +202,7 @@ export const createTrip = asyncHandler(async (req, res) => {
 
 export const BookedTrip = asyncHandler(async (req, res, next) => {
   const { tripId } = req.params;
-  const { BookedTicket } = req.body;
+  const { BookedTicket, paymentType } = req.body;
   const userId = req.user._id;
 
   const trip = await tripModel.findById(tripId);
@@ -209,66 +215,115 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
     return res.status(400).json({ success: false, message: "User not found" });
   }
 
-  if (trip.priceAfterOffer * BookedTicket > user.wallet.balance) {
-    return res.status(400).json({
-      success: false,
-      message: "Your balance is not enough to book this trip",
-    });
-  }
-
-  await userModel.findByIdAndUpdate(
-    userId,
-    { $addToSet: { Booked: { tripId, BookedTicket } } },
-    { new: true }
-  );
-
   const totalCost = trip.priceAfterOffer * BookedTicket;
-  await userModel.findByIdAndUpdate(
-    userId,
-    {
-      $inc: {
-        "wallet.balance": -totalCost,
-        "wallet.TotalWithdraw": totalCost,
-      },
-    },
-    { new: true }
-  );
 
-  const transactionId = randomstring.generate({
-    length: 7,
-    charset: "numeric",
-  });
-  const transaction = await transactionsModel.create({
-    userId,
-    price: totalCost,
-    nameTransaction: trip.tripTitle,
-    status: "Withdraw",
-    type: "Wallet",
-    transactionId,
-  });
+  try {
+    if (paymentType === "Wallet") {
+      if (totalCost > user.wallet.balance) {
+        return res.status(400).json({
+          success: false,
+          message: "Your balance is not enough to book this trip",
+        });
+      }
 
-  trip.numberOfPeopleAvailable -= BookedTicket;
-  trip.totalEarnings += totalCost;
-  await trip.save();
+      await userModel.findByIdAndUpdate(
+        userId,
+        {
+          $inc: {
+            "wallet.balance": -totalCost,
+            "wallet.TotalWithdraw": totalCost,
+          },
+        },
+        { new: true }
+      );
+    } else {
+      let paymentResponse;
+      switch (paymentType) {
+        case "Card":
+          paymentResponse = await initiateCardPaymentService({
+            amount: totalCost,
+            name: `Trip Booking - ${trip.tripTitle}`,
+          });
+          break;
+        case "PayPal":
+          paymentResponse = await initiatePayPalPaymentService({
+            amount: totalCost,
+            name: `Trip Booking - ${trip.tripTitle}`,
+          });
+          break;
+        case "Apple":
+          paymentResponse = await initiateApplePayPaymentService({
+            amount: totalCost,
+            name: `Trip Booking - ${trip.tripTitle}`,
+          });
+          break;
+        case "Google":
+          paymentResponse = await initiateGooglePayPaymentService({
+            amount: totalCost,
+            name: `Trip Booking - ${trip.tripTitle}`,
+          });
+          break;
+        default:
+          return res.status(400).json({
+            success: false,
+            message: "Invalid payment type",
+          });
+      }
 
-  transaction.date = moment(transaction.createdAt).format("MM/DD/YYYY");
-  await transaction.save();
+      if (paymentResponse?.result?.checkoutData?.postUrl) {
+        return res.status(200).json({
+          success: true,
+          message: "Redirect to payment",
+          checkoutUrl: paymentResponse.result.checkoutData.postUrl,
+        });
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Failed to initiate payment",
+        });
+      }
+    }
 
-  let chatGroup = await GroupChat.findOne({ tripId });
+    await userModel.findByIdAndUpdate(
+      userId,
+      { $addToSet: { Booked: { tripId, BookedTicket } } },
+      { new: true }
+    );
 
-  if (!chatGroup) {
-    chatGroup = await GroupChat.create({
-      tripId,
-      groupName: "test group chat",
-      participants: [userId],
-      lastMessage: {
-        text: "Welcome to the trip!",
-        senderId: userId,
-        seen: false,
-      },
+    const transactionId = randomstring.generate({
+      length: 7,
+      charset: "numeric",
     });
-  } else {
-    if (
+    const transaction = await transactionsModel.create({
+      actorId: userId,
+      actorType: "User",
+      amount: totalCost,
+      type: "Trip",
+      method: paymentType,
+      tripId: trip._id,
+      reason: trip.tripTitle,
+      transactionId,
+    });
+    trip.numberOfPeopleAvailable -= BookedTicket;
+    trip.totalEarnings += totalCost;
+    await trip.save();
+
+    transaction.date = moment(transaction.createdAt).format("MM/DD/YYYY");
+    await transaction.save();
+
+    let chatGroup = await GroupChat.findOne({ tripId });
+    if (!chatGroup) {
+      chatGroup = await GroupChat.create({
+        tripId,
+        groupName: `${trip.tripTitle} Chat`,
+        participants: [userId],
+        lastMessage: {
+          text: "Welcome to the trip!",
+          senderId: userId,
+          seen: false,
+        },
+      });
+    } else if (
       !chatGroup.participants.some(
         (participant) => participant.toString() === userId.toString()
       )
@@ -276,13 +331,20 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
       chatGroup.participants.push(userId);
       await chatGroup.save();
     }
-  }
 
-  res.status(200).json({
-    success: true,
-    message: "The trip has been booked successfully",
-    transactionCode: transaction.transactionId,
-  });
+    res.status(200).json({
+      success: true,
+      message: "The trip has been booked successfully",
+      transactionCode: transaction.transactionId,
+    });
+  } catch (error) {
+    console.error("Error during booking process:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Booking process failed",
+      error: error.message,
+    });
+  }
 });
 
 export const deleteTrip = asyncHandler(async (req, res, next) => {

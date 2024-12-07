@@ -1,31 +1,28 @@
 import mongoose, { Schema, Types, model } from "mongoose";
 
-const creditCardSchema = new Schema(
+const cardSchema = new Schema(
   {
-    cardNumber: {
+    actorId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    actorType: {
       type: String,
+      enum: ["User", "Owner", "TripLeader"],
       required: true,
     },
-    cardHolderName: {
-      type: String,
-      required: true,
-    },
-    cardExpirationDate: {
-      type: String,
-      required: true,
-    },
-    user: {
-      type: Types.ObjectId,
-      ref: "User",
-    },
+    cardholderName: { type: String, required: true },
+    token: { type: String, required: true },
+    last4Digits: { type: String, required: true },
     cardType: {
       type: String,
+      enum: ["Visa", "MasterCard", "Mada"],
+      required: true,
     },
+    expiryDate: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
   },
+
   { timestamps: true }
 );
 
-const creditCardModel =
-  mongoose.models.creditCardModel || model("creditCard", creditCardSchema);
+const cardModel = mongoose.models.cardModel || model("Card", cardSchema);
 
-export default creditCardModel;
+export default cardModel;

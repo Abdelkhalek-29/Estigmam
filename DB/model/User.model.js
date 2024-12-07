@@ -80,18 +80,11 @@ const userSchema = new Schema(
       },
     ],
     wallet: {
-      balance: {
-        type: Number,
-        default: 0,
-      },
-      TotalDeposit: {
-        type: Number,
-        default: 0,
-      },
-      TotalWithdraw: {
-        type: Number,
-        default: 0,
-      },
+      balance: { type: Number, required: true, default: 0 },
+      currency: { type: String, required: true, default: "SAR" },
+      total_Deposit: { type: Number, required: true, default: 0 },
+      total_Expenses: { type: Number, required: true, default: 0 },
+      lastUpdated: { type: Date, default: Date.now },
     },
     Booked: [
       {
@@ -109,7 +102,7 @@ const userSchema = new Schema(
       discount: {
         type: Types.ObjectId,
         ref: "Discount",
-        default:"66a7c1d406919ff7f43c6ad3"
+        default: "66a7c1d406919ff7f43c6ad3",
       },
     },
     fcmToken: {

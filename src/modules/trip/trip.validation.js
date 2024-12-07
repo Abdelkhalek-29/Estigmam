@@ -69,6 +69,9 @@ export const tripId = joi
 export const bookeTicket = joi.object({
   tripId: joi.string().custom(validateObjectId),
   BookedTicket: joi.number().min(1).required(),
+  paymentType: joi
+    .string()
+    .valid("Wallet", "Card", "Paypal", "Apple", "Google"),
 });
 export const categoryId = joi.object({
   categoryId: joi.string().custom(validateObjectId),
@@ -81,5 +84,15 @@ export const rating = joi.object({
 });
 
 export const scheduleUserTrips = {
-  type: joi.string().valid('current', 'upcoming', 'pending', 'cancelled', 'rejected', 'completed').optional(),
-}
+  type: joi
+    .string()
+    .valid(
+      "current",
+      "upcoming",
+      "pending",
+      "cancelled",
+      "rejected",
+      "completed"
+    )
+    .optional(),
+};

@@ -23,6 +23,7 @@ import subSubCategoryRouter from "./modules/subSubcategory/subSubcategory.router
 import cityAndCountryRouter from "./modules/countey&city/country&city.router.js";
 import searchRouter from "./modules/search/search.router.js";
 import activityRouter from "./modules/activity/activity.router.js";
+import paymentRouter from "./modules/payment/payment.router.js";
 import { globalErrorHandling } from "./utils/errorHandling.js";
 import cors from "cors";
 const initApp = (app, express) => {
@@ -40,6 +41,7 @@ const initApp = (app, express) => {
   app.use(`/typesOfPlaces`, typesOfPlacesRouter);
   app.use(`/trip`, tripRouter);
   app.use(`/cityAndCountry`, cityAndCountryRouter);
+  app.use("/payment", paymentRouter);
   // app.use(`/customizeTrip`, customizeTripRouter);
   app.use(`/banner`, bannerRouter);
   app.use(`/infoApp`, infoAppRouter);
@@ -56,7 +58,7 @@ const initApp = (app, express) => {
 
   app.use("/notification", notificationRouter);
   app.use("/bedType", bedTypeRouter);
-  app.use("/rattingOwner",rattingOwnerRouter)
+  app.use("/rattingOwner", rattingOwnerRouter);
 
   app.all("*", (req, res, next) => {
     res.send("In-valid Routing Plz check url  or  method");
