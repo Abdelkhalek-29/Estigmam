@@ -12,6 +12,13 @@ const validateAmount = (amount) => {
   return numAmount;
 };
 
+// Helper function to get the dynamic return URL
+const getReturnUrl = () => {
+  return process.env.NODE_ENV === "production"
+    ? "https://estigmam.vercel.app/payment/success"
+    : "http://localhost:3000/payment/success";
+};
+
 export const initiateCardPaymentService = async (params) => {
   try {
     const validAmount = validateAmount(params.amount);
@@ -22,16 +29,17 @@ export const initiateCardPaymentService = async (params) => {
       order: {
         amount: formattedAmount,
         currency: "SAR",
-        name: "test",
+        name: params.name || "Card Payment",
         channel: "WEB",
         category: "pay",
       },
       configuration: {
         paymentAction: "AUTHORIZE,SALE",
-        returnUrl: "https://estigmam.vercel.app/payment/success",
+        returnUrl: getReturnUrl(),
         locale: "en",
       },
     });
+
     return response.data;
   } catch (error) {
     console.error("Noon API Error:", error.response?.data || error.message);
@@ -48,12 +56,12 @@ export const initiateApplePayPaymentService = async (order) => {
     order: {
       amount: formattedAmount,
       currency: "SAR",
-      name: order.name,
+      name: order.name || "Apple Pay Payment",
       channel: "WEB",
       category: "pay",
     },
     configuration: {
-      returnUrl: "https://estigmam.vercel.app/payment/success",
+      returnUrl: getReturnUrl(),
       paymentAction: "AUTHORIZE",
       locale: "en",
     },
@@ -83,14 +91,14 @@ export const initiateGooglePayPaymentService = async (order) => {
     order: {
       amount: formattedAmount,
       currency: "SAR",
-      name: order.name,
+      name: order.name || "Google Pay Payment",
       reference: order.reference,
       category: "pay",
       channel: "WEB",
     },
     configuration: {
       PaymentAction: "AUTHORIZE,SALE",
-      returnUrl: "https://estigmam.vercel.app/payment/success",
+      returnUrl: getReturnUrl(),
     },
   };
 
@@ -118,14 +126,14 @@ export const initiatePayPalPaymentService = async (order) => {
     order: {
       amount: formattedAmount,
       currency: "SAR",
-      name: order.orderName,
+      name: order.name || "PayPal Payment",
       reference: order.reference,
       category: "pay",
       channel: "WEB",
     },
     configuration: {
       paymentAction: "AUTHORIZE,SALE",
-      returnUrl: "https://estigmam.vercel.app/payment/success",
+      returnUrl: getReturnUrl(),
       locale: "en",
     },
   };
