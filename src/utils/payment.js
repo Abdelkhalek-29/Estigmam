@@ -15,7 +15,7 @@ const validateAmount = (amount) => {
 // Helper function to get the dynamic return URL
 const getReturnUrl = () => {
   return process.env.NODE_ENV === "production"
-    ? "https://estigmam.vercel.app/payment/success"
+    ? "https://estigmam.vercel.app/success.html"
     : "http://localhost:3000/payment/success";
 };
 
