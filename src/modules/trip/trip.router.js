@@ -10,8 +10,8 @@ const router = Router({ mergeParams: true });
 router.post(
   "/createTrip",
   auth,
- // isAuthorized("owner"),
- // validation(validators.createTrip),
+  // isAuthorized("owner"),
+  // validation(validators.createTrip),
   tripController.createTrip
 );
 router.post(
@@ -104,15 +104,18 @@ router.patch(
   tripController.cancel
 );
 
-router.get('/trips-by-berth',auth ,tripController.tripsByBerth)
-router.get('/upcoming-by-berth',auth,tripController.getUpcomingTripsByBerth)
+router.get("/trips-by-berth", auth, tripController.tripsByBerth);
+router.get("/upcoming-by-berth", auth, tripController.getUpcomingTripsByBerth);
 /*router.get(
   "/category/:categoryId",
 //  validation(validators.categoryId),
   tripController.category 
 )*/
-router.get('/Categories',tripController.getAllCategoriesWithTypesAndActivities);
-router.get('/getLeaders/:type',auth,tripController.getLeaders)
-router.get('/getTools',auth,tripController.getTools)
-router.get('/getPlaces',auth,tripController.getPlaces)
+router.get(
+  "/Categories",
+  tripController.getAllCategoriesWithTypesAndActivities
+);
+router.get("/getLeaders/:type", auth, tripController.getLeaders);
+router.get("/getTools", auth, tripController.getTools);
+router.get("/getPlaces", auth, tripController.getPlaces);
 export default router;

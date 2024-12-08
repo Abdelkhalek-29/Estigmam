@@ -28,8 +28,7 @@ export const initiateCardPaymentService = async (params) => {
       },
       configuration: {
         paymentAction: "AUTHORIZE,SALE",
-        returnUrl:
-          "http://127.0.0.1:5500/src/modules/payment/controller/success.html",
+        returnUrl: "https://estigmam.vercel.app/payment/success",
         locale: "en",
       },
     });
@@ -54,8 +53,7 @@ export const initiateApplePayPaymentService = async (order) => {
       category: "pay",
     },
     configuration: {
-      returnUrl:
-        "http://127.0.0.1:5500/src/modules/payment/controller/success.html",
+      returnUrl: "https://estigmam.vercel.app/payment/success",
       paymentAction: "AUTHORIZE",
       locale: "en",
     },
@@ -92,8 +90,7 @@ export const initiateGooglePayPaymentService = async (order) => {
     },
     configuration: {
       PaymentAction: "AUTHORIZE,SALE",
-      returnUrl:
-        "http://127.0.0.1:5500/src/modules/payment/controller/success.html",
+      returnUrl: "https://estigmam.vercel.app/payment/success",
     },
   };
 
@@ -128,8 +125,7 @@ export const initiatePayPalPaymentService = async (order) => {
     },
     configuration: {
       paymentAction: "AUTHORIZE,SALE",
-      returnUrl:
-        "http://127.0.0.1:5500/src/modules/payment/controller/success.html",
+      returnUrl: "https://estigmam.vercel.app/payment/success",
       locale: "en",
     },
   };
