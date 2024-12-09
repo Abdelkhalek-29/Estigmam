@@ -242,25 +242,25 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
         case "Card":
           paymentResponse = await initiateCardPaymentService({
             amount: totalCost,
-            name: `Trip Booking - ${trip.tripTitle}`,
+            name: `Trip Booking`,
           });
           break;
         case "PayPal":
           paymentResponse = await initiatePayPalPaymentService({
             amount: totalCost,
-            name: `Trip Booking - ${trip.tripTitle}`,
+            name: `Trip Booking`,
           });
           break;
         case "Apple":
           paymentResponse = await initiateApplePayPaymentService({
             amount: totalCost,
-            name: `Trip Booking - ${trip.tripTitle}`,
+            name: `Trip Booking`,
           });
           break;
         case "Google":
           paymentResponse = await initiateGooglePayPaymentService({
             amount: totalCost,
-            name: `Trip Booking - ${trip.tripTitle}`,
+            name: `Trip Booking`,
           });
           break;
         default:

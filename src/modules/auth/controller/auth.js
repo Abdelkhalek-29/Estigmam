@@ -12,23 +12,25 @@ import { sendSMS } from "../../../utils/twilioService.js";
 export const register = asyncHandler(async (req, res, next) => {
   const { userName, fullName, email, password, city, country, phone } =
     req.body;
+
   const isUser = await userModel.findOne({ phone });
   const isEmail = await userModel.findOne({ email });
   if (isEmail) {
     return next(new Error("The Email has already been used!", { cause: 409 }));
   }
   if (isUser) {
-    return next(new Error("phone already registered !", { cause: 409 }));
+    return next(new Error("Phone already registered!", { cause: 409 }));
   }
+
   const countryId = await countryModel.findById(country);
   if (!countryId) {
     return next(new Error("Country Not Found!", { cause: 404 }));
   }
   const cityId = await cityModel.findById(city);
-
   if (!cityId) {
     return next(new Error("City Not Found!", { cause: 404 }));
   }
+
   const hashPassword = bcryptjs.hashSync(
     password,
     Number(process.env.SALT_ROUND)
@@ -44,17 +46,24 @@ export const register = asyncHandler(async (req, res, next) => {
     password: hashPassword,
   });
 
-  // const code = randomstring.generate({
-  //   length: 4,
-  //   charset: "numeric",
-  // });
-  const userCode = randomstring.generate({
-    length: 15,
+  const forgetCode = randomstring.generate({
+    length: 4,
+    charset: "numeric",
   });
-  user.userCode.code = userCode;
 
-  user.forgetCode = "1234";
+  user.forgetCode = forgetCode;
+  // user.phoneWithCode = countryId.codePhone + phone.slice(1);
   await user.save();
+
+  // Send OTP via Twilio
+  const message = `Your verification code is: ${forgetCode}`;
+  try {
+    await sendSMS(user.phone, message);
+  } catch (error) {
+    return next(
+      new Error("Failed to send OTP. Please try again later.", { cause: 500 })
+    );
+  }
 
   const token = jwt.sign(
     { id: user._id, email: user.email },
@@ -67,13 +76,10 @@ export const register = asyncHandler(async (req, res, next) => {
     agent: req.headers["user-agent"],
   });
 
-  user.phoneWithCode = countryId.codePhone + phone.slice(1);
-  await user.save();
-
   return res.status(200).json({
     success: true,
-
-    data: { token, code: user.forgetCode },
+    message: "Registration successful. OTP sent to your phone.",
+    data: { token },
   });
 });
 // export const activationAccount = asyncHandler(async (req, res, next) => {
@@ -226,13 +232,21 @@ export const sendForgetCode = asyncHandler(async (req, res, next) => {
     return next(new Error("Invalid phone number!", { cause: 400 }));
   }
 
-  // const code = randomstring.generate({
-  //   length: 4,
-  //   charset: "numeric",
-  // });
-
-  user.forgetCode = "1234";
+  const forgetCode = randomstring.generate({
+    length: 4,
+    charset: "numeric",
+  });
+  user.forgetCode = forgetCode;
   await user.save();
+  const message = `Your OTP code is: ${forgetCode}`;
+  try {
+    await sendSMS(user.phone, message);
+  } catch (error) {
+    return next(
+      new Error("Failed to send OTP. Please try again later.", { cause: 500 })
+    );
+  }
+
   const token = jwt.sign(
     { id: user._id, email: user.email },
     process.env.TOKEN_SIGNATURE
@@ -253,14 +267,21 @@ export const sendForgetCode = asyncHandler(async (req, res, next) => {
 export const resendCode = asyncHandler(async (req, res, next) => {
   const user = await userModel.findOne({ phone: req.user.phone });
 
-  // const code = randomstring.generate({
-  //   length: 4,
-  //   charset: "numeric",
-  // });
+  const forgetCode = randomstring.generate({
+    length: 4,
+    charset: "numeric",
+  });
 
-  user.forgetCode = "1234";
+  user.forgetCode = forgetCode;
   await user.save();
-
+  const message = `Your OTP code is: ${forgetCode}`;
+  try {
+    await sendSMS(user.phone, message);
+  } catch (error) {
+    return next(
+      new Error("Failed to send OTP. Please try again later.", { cause: 500 })
+    );
+  }
   return res.status(200).json({
     success: true,
     status: 200,

@@ -16,6 +16,7 @@ import { typesOfPlaces } from "../../typesOfPlaces/controller/typesOfPlaces.js";
 import typesOfPlacesModel from "../../../../DB/model/typesOfPlaces.model.js";
 import { updateTool } from "../../tool/controller/tool.js";
 import berthModel from "../../../../DB/model/berth.model.js";
+import { sendSMS } from "../../../utils/twilioService.js";
 
 const predefinedTypes = [
   { id: "66dcc2b4626dfd336c9d8732", name: { en: "Boats", ar: "مراكب" } },
@@ -289,14 +290,21 @@ export const sendForgetCode = asyncHandler(async (req, res, next) => {
     return next(new Error("Invalid phone number!", { cause: 400 }));
   }
 
-  const code = randomstring.generate({
+  const forgetCode = randomstring.generate({
     length: 4,
     charset: "numeric",
   });
 
-  user.forgetCode = code;
+  user.forgetCode = forgetCode;
   await user.save();
-
+  const message = `Your OTP code is: ${forgetCode}`;
+  try {
+    await sendSMS(user.phone, message);
+  } catch (error) {
+    return next(
+      new Error("Failed to send OTP. Please try again later.", { cause: 500 })
+    );
+  }
   const token = jwt.sign(
     { id: user._id, phone: user.phone, role },
     process.env.TOKEN_SIGNATURE
@@ -319,14 +327,21 @@ export const sendForgetCode = asyncHandler(async (req, res, next) => {
 export const resendCode = asyncHandler(async (req, res, next) => {
   const user = await OwnerModel.findOne({ phone: req.owner.phone });
 
-  const code = randomstring.generate({
+  const forgetCode = randomstring.generate({
     length: 4,
     charset: "numeric",
   });
 
-  user.forgetCode = code;
+  user.forgetCode = forgetCode;
   await user.save();
-
+  const message = `Your OTP code is: ${forgetCode}`;
+  try {
+    await sendSMS(user.phone, message);
+  } catch (error) {
+    return next(
+      new Error("Failed to send OTP. Please try again later.", { cause: 500 })
+    );
+  }
   return res.status(200).json({
     success: true,
     status: 200,
@@ -622,7 +637,6 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
       ref: "Category",
     })
     .sort({ startDate: -1 });
-
 
   const transformedTrips = upcomingTrips.map((trip) => {
     const { typeOfPlace, category, addition, bedType, tripLeaderId } =

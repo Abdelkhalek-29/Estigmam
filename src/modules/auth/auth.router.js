@@ -32,7 +32,7 @@ router.put(
 
 router.patch(
   "/sendForgetCode",
-  validation(Validators.sendForgetCode),
+  //validation(Validators.sendForgetCode),
   userController.sendForgetCode
 );
 router.patch("/resendCode", auth, userController.resendCode);

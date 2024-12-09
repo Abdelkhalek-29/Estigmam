@@ -109,7 +109,6 @@ const userSchema = new Schema(
       type: String,
       default: null,
     },
-    otp: { type: String },
   },
   { timestamps: true }
 );
