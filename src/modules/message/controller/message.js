@@ -1,4 +1,3 @@
-// import { getRecipientSocketId, io } from "../../../../index.js";
 import conversationModel from "../../../../DB/model/conversation.model.js";
 import GroupChat from "../../../../DB/model/groupChat,model.js";
 import OwnerModel from "../../../../DB/model/Owner.model .js";
@@ -6,7 +5,7 @@ import tripLeaderModel from "../../../../DB/model/tripLeader.model.js";
 import userModel from "../../../../DB/model/User.model.js";
 import { asyncHandler } from "../../../utils/errorHandling.js";
 import messageModel from "../../../../DB/model/message.model.js";
-import { messaging } from "../../../utils/firebase.js"; // import your Firebase messaging utility
+import { messaging } from "../../../utils/firebase.js"; 
 
 // import cloudinary from "../../../utils/cloud.js";
 

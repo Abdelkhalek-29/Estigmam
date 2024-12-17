@@ -219,6 +219,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
 
   try {
     if (paymentType === "Wallet") {
+      // Check wallet balance
       if (totalCost > user.wallet.balance) {
         return res.status(400).json({
           success: false,
@@ -226,6 +227,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
         });
       }
 
+      // Deduct from wallet balance
       await userModel.findByIdAndUpdate(
         userId,
         {
@@ -237,7 +239,9 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
         { new: true }
       );
     } else {
+      // Handle external payment methods
       let paymentResponse;
+
       switch (paymentType) {
         case "Card":
           paymentResponse = await initiateCardPaymentService({
@@ -270,6 +274,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
           });
       }
 
+      // Redirect or fail if payment URL is not available
       if (paymentResponse?.result?.checkoutData?.postUrl) {
         return res.status(200).json({
           success: true,
@@ -284,12 +289,14 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
       }
     }
 
+    // 1. Add trip to user's Booked trips
     await userModel.findByIdAndUpdate(
       userId,
       { $addToSet: { Booked: { tripId, BookedTicket } } },
       { new: true }
     );
 
+    // 2. Create a transaction record
     const transactionId = randomstring.generate({
       length: 7,
       charset: "numeric",
@@ -304,6 +311,8 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
       reason: trip.tripTitle,
       transactionId,
     });
+
+    // 3. Update trip details
     trip.numberOfPeopleAvailable -= BookedTicket;
     trip.totalEarnings += totalCost;
     await trip.save();
@@ -311,6 +320,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
     transaction.date = moment(transaction.createdAt).format("MM/DD/YYYY");
     await transaction.save();
 
+    // 4. Add user to group chat or create a new one
     let chatGroup = await GroupChat.findOne({ tripId });
     if (!chatGroup) {
       chatGroup = await GroupChat.create({
@@ -332,6 +342,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
       await chatGroup.save();
     }
 
+    // Final response
     res.status(200).json({
       success: true,
       message: "The trip has been booked successfully",
@@ -344,6 +355,38 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
       message: "Booking process failed",
       error: error.message,
     });
+  }
+});
+export const paymentWebhook = asyncHandler(async (req, res) => {
+  const { userId, tripId, BookedTicket, paymentType, paymentStatus } = req.body;
+
+  if (paymentStatus !== "SUCCESS") {
+    return res.status(400).json({ success: false, message: "Payment failed" });
+  }
+
+  const user = await userModel.findById(userId);
+  const trip = await tripModel.findById(tripId);
+
+  if (!user || !trip) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid user or trip" });
+  }
+
+  const totalCost = trip.priceAfterOffer * BookedTicket;
+
+  try {
+    await bookTrip(user, trip, BookedTicket, totalCost, paymentType);
+
+    return res.status(200).json({
+      success: true,
+      message: "The trip has been booked successfully",
+    });
+  } catch (error) {
+    console.error("Error during webhook:", error.message);
+    res
+      .status(500)
+      .json({ success: false, message: "Webhook processing failed" });
   }
 });
 
@@ -1089,8 +1132,8 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
   const trips = await tripModel.find({ _id: { $in: tripIds } }).populate([
     { path: "typeOfPlace", select: "name_ar name_en" },
     { path: "category", select: "name_ar name_en" },
-    { path: "bedType", select: "name" },
-    { path: "addition", select: "name" },
+    { path: "bedType", select: "name_ar name_en" },
+    { path: "addition", select: "name_ar name_en" },
     {
       path: "tripLeaderId",
       select: "profileImage _id name tripsCounter averageRating",
@@ -1118,6 +1161,12 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
         ? trip.typeOfPlace[nameField]
         : "";
       const activityName = trip.activity ? trip.activity[nameField] : "";
+      const additionNames = trip.addition
+        .map((addition) => addition[nameField] || "")
+        .filter(Boolean);
+      const bedTypeNames = trip.bedType
+        .map((bedType) => bedType[nameField] || "")
+        .filter(Boolean);
 
       return {
         ...trip.toObject(),
@@ -1135,6 +1184,14 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
           _id: trip.activity?._id || "",
           name: activityName,
         },
+        bedType: bedTypeNames.map((name, index) => ({
+          _id: trip.bedType[index]?._id || "",
+          name,
+        })),
+        addition: additionNames.map((name, index) => ({
+          _id: trip.addition[index]?._id || "",
+          name,
+        })),
         ...(trip.status === "pending" && { commentsCount }),
       };
     })
