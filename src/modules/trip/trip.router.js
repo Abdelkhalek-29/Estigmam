@@ -57,6 +57,7 @@ router.put(
   validation(validators.bookeTicket),
   tripController.BookedTrip
 );
+router.post("/webhock", tripController.handleWebhook);
 router.get(
   "/getTripByOffer/:categoryId",
   validation(validators.categoryId),
@@ -88,7 +89,6 @@ router.get(
   validation(validators.tripId),
   tripController.rateDetails
 );
-
 router.get(
   "/scheduleTrips",
   auth,

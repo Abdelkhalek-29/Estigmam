@@ -13,6 +13,12 @@ const transactionSchema = new Schema(
       type: String,
       enum: ["Card", "APPle", "Google", "PayPal", "Wallet"],
     },
+    status: {
+      type: String,
+      enum: ["placed", "Payed", "failed"],
+      default: "placed",
+    },
+    numberOfTickets: Number,
     tripId: { type: Types.ObjectId },
     reason: { type: String },
     date: { type: Date, default: Date.now },

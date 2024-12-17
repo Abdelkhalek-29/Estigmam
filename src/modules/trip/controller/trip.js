@@ -307,6 +307,8 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
       amount: totalCost,
       type: "Trip",
       method: paymentType,
+      status: "placed",
+      numberOfTickets: BookedTicket,
       tripId: trip._id,
       reason: trip.tripTitle,
       transactionId,
@@ -319,6 +321,54 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
 
     transaction.date = moment(transaction.createdAt).format("MM/DD/YYYY");
     await transaction.save();
+
+    const invoiceService = new InvoiceService();
+    const invoiceData = {
+      invoiceNumber: transaction.transactionId,
+      date: new Date(),
+      customerName: user.name,
+      totalAmount: totalCost,
+      numberOfPeople: BookedTicket,
+      pricePerPerson: trip.priceAfterOffer,
+      discount: trip.offer,
+      subtotal: totalCost,
+      roundingAmount: 0,
+      paymentMethod: paymentType,
+      cardLastDigits: paymentType,
+      tripDetails: {
+        departureDate: moment(trip.startDate).format("YYYY-MM-DD"),
+        departureLocation: trip.startLocation,
+        arrivalDate: moment(trip.endDate).format("YYYY-MM-DD"),
+        arrivalLocation: trip.endLocation,
+      },
+      bookingReference: transaction.transactionId,
+    };
+
+    // Generate Invoice and upload directly to Cloudinary
+    const invoicePath = await invoiceService.generateInvoice(invoiceData);
+    if (!invoicePath) {
+      return res.status(400).json({
+        success: false,
+        message: "Invoice generation failed, no file path returned",
+      });
+    }
+    // Upload Invoice to Cloudinary without needing to store locally
+    const cloudinaryResponse = await cloudinary.uploader.upload(invoicePath, {
+      folder: "invoices",
+      resource_type: "raw",
+    });
+
+    // Update user with Cloudinary invoice URL
+    await userModel.findByIdAndUpdate(
+      userId,
+      {
+        $set: { "Booked.$[elem].invoiceURL": cloudinaryResponse.secure_url },
+      },
+      {
+        arrayFilters: [{ "elem.tripId": tripId }],
+        new: true,
+      }
+    );
 
     // 4. Add user to group chat or create a new one
     let chatGroup = await GroupChat.findOne({ tripId });
@@ -347,6 +397,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
       success: true,
       message: "The trip has been booked successfully",
       transactionCode: transaction.transactionId,
+      invoiceURL: cloudinaryResponse.secure_url,
     });
   } catch (error) {
     console.error("Error during booking process:", error.message);
@@ -357,39 +408,78 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
     });
   }
 });
-export const paymentWebhook = asyncHandler(async (req, res) => {
-  const { userId, tripId, BookedTicket, paymentType, paymentStatus } = req.body;
 
-  if (paymentStatus !== "SUCCESS") {
-    return res.status(400).json({ success: false, message: "Payment failed" });
+export const handleWebhook = async (req, res, next) => {
+  const eventData = req.body;
+  const signature = req.headers["x-signature"];
+
+  if (!isValidSignature(eventData, signature)) {
+    return res.status(400).send("Invalid signature");
   }
 
-  const user = await userModel.findById(userId);
-  const trip = await tripModel.findById(tripId);
+  const { eventType, orderStatus, orderId } = eventData;
 
-  if (!user || !trip) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Invalid user or trip" });
+  if (eventType === "Authenticate" && orderStatus === "AUTHENTICATED") {
+    try {
+      const confirm = await transactionsModel.findOneAndUpdate(
+        { _id: orderId },
+        { status: "payed" }
+      );
+
+      if (confirm) {
+        console.log(`Order ${orderId} authenticated successfully.`);
+      } else {
+        console.log(`Order ${orderId} not found.`);
+      }
+    } catch (error) {
+      console.error(`Error updating order ${orderId}:`, error);
+      return res.status(500).send("Internal Server Error");
+    }
+  } else if (eventType === "Fail" && orderStatus === "FAILED") {
+    // Handle the FAILED event
+    try {
+      const failed = await transactionsModel.findOneAndUpdate(
+        { _id: orderId },
+        { status: "failed" }
+      );
+
+      if (failed) {
+        console.log(`Order ${orderId} authentication failed.`);
+      } else {
+        console.log(`Order ${orderId} not found.`);
+      }
+    } catch (error) {
+      console.error(`Error updating order ${orderId}:`, error);
+      return res.status(500).send("Internal Server Error");
+    }
+  } else {
+    console.log(`Received unknown event type: ${eventType}`);
   }
 
-  const totalCost = trip.priceAfterOffer * BookedTicket;
+  // Respond to acknowledge the webhook
+  res.status(200).send("Event received");
+};
 
-  try {
-    await bookTrip(user, trip, BookedTicket, totalCost, paymentType);
+// Helper function to validate the signature
+function isValidSignature(eventData, signature) {
+  const data = [
+    eventData.orderId,
+    eventData.orderStatus,
+    eventData.eventId,
+    eventData.eventType,
+    eventData.timeStamp,
+    eventData.originalOrderId,
+    eventData.merchantOrderReference,
+    eventData.attemptNumber,
+  ].join(",");
 
-    return res.status(200).json({
-      success: true,
-      message: "The trip has been booked successfully",
-    });
-  } catch (error) {
-    console.error("Error during webhook:", error.message);
-    res
-      .status(500)
-      .json({ success: false, message: "Webhook processing failed" });
-  }
-});
+  const hash = crypto
+    .createHmac("sha256", process.env.SECRET_KEY) // Ensure SECRET_KEY is set in your environment variables
+    .update(data)
+    .digest("base64");
 
+  return signature === hash;
+}
 export const deleteTrip = asyncHandler(async (req, res, next) => {
   const ownerId = req.owner?._id;
   const userId = req.user?._id;
