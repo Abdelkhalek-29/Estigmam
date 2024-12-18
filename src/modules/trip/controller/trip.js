@@ -22,6 +22,7 @@ import conversationModel from "../../../../DB/model/conversation.model.js";
 import GroupChat from "../../../../DB/model/groupChat,model.js";
 import berthModel from "../../../../DB/model/berth.model.js";
 import { getRandomLocationInCircle } from "../../../utils/RandomLocation.js";
+import { InvoiceService } from "../../../utils/invoiceService.js";
 import {
   initiateApplePayPaymentService,
   initiateCardPaymentService,
@@ -216,197 +217,166 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
   }
 
   const totalCost = trip.priceAfterOffer * BookedTicket;
-
-  try {
-    if (paymentType === "Wallet") {
-      // Check wallet balance
-      if (totalCost > user.wallet.balance) {
-        return res.status(400).json({
-          success: false,
-          message: "Your balance is not enough to book this trip",
-        });
-      }
-
-      // Deduct from wallet balance
-      await userModel.findByIdAndUpdate(
-        userId,
-        {
-          $inc: {
-            "wallet.balance": -totalCost,
-            "wallet.TotalWithdraw": totalCost,
-          },
-        },
-        { new: true }
-      );
-    } else {
-      // Handle external payment methods
-      let paymentResponse;
-
-      switch (paymentType) {
-        case "Card":
-          paymentResponse = await initiateCardPaymentService({
-            amount: totalCost,
-            name: `Trip Booking`,
-          });
-          break;
-        case "PayPal":
-          paymentResponse = await initiatePayPalPaymentService({
-            amount: totalCost,
-            name: `Trip Booking`,
-          });
-          break;
-        case "Apple":
-          paymentResponse = await initiateApplePayPaymentService({
-            amount: totalCost,
-            name: `Trip Booking`,
-          });
-          break;
-        case "Google":
-          paymentResponse = await initiateGooglePayPaymentService({
-            amount: totalCost,
-            name: `Trip Booking`,
-          });
-          break;
-        default:
-          return res.status(400).json({
-            success: false,
-            message: "Invalid payment type",
-          });
-      }
-
-      // Redirect or fail if payment URL is not available
-      if (paymentResponse?.result?.checkoutData?.postUrl) {
-        return res.status(200).json({
-          success: true,
-          message: "Redirect to payment",
-          checkoutUrl: paymentResponse.result.checkoutData.postUrl,
-        });
-      } else {
-        return res.status(400).json({
-          success: false,
-          message: "Failed to initiate payment",
-        });
-      }
-    }
-
-    // 1. Add trip to user's Booked trips
-    await userModel.findByIdAndUpdate(
-      userId,
-      { $addToSet: { Booked: { tripId, BookedTicket } } },
-      { new: true }
-    );
-
-    // 2. Create a transaction record
-    const transactionId = randomstring.generate({
-      length: 7,
-      charset: "numeric",
-    });
-    const transaction = await transactionsModel.create({
-      actorId: userId,
-      actorType: "User",
-      amount: totalCost,
-      type: "Trip",
-      method: paymentType,
-      status: "placed",
-      numberOfTickets: BookedTicket,
-      tripId: trip._id,
-      reason: trip.tripTitle,
-      transactionId,
-    });
-
-    // 3. Update trip details
-    trip.numberOfPeopleAvailable -= BookedTicket;
-    trip.totalEarnings += totalCost;
-    await trip.save();
-
-    transaction.date = moment(transaction.createdAt).format("MM/DD/YYYY");
-    await transaction.save();
-
-    const invoiceService = new InvoiceService();
-    const invoiceData = {
-      invoiceNumber: transaction.transactionId,
-      date: new Date(),
-      customerName: user.name,
-      totalAmount: totalCost,
-      numberOfPeople: BookedTicket,
-      pricePerPerson: trip.priceAfterOffer,
-      discount: trip.offer,
-      subtotal: totalCost,
-      roundingAmount: 0,
-      paymentMethod: paymentType,
-      cardLastDigits: paymentType,
-      tripDetails: {
-        departureDate: moment(trip.startDate).format("YYYY-MM-DD"),
-        departureLocation: trip.startLocation,
-        arrivalDate: moment(trip.endDate).format("YYYY-MM-DD"),
-        arrivalLocation: trip.endLocation,
-      },
-      bookingReference: transaction.transactionId,
-    };
-
-    // Generate Invoice and upload directly to Cloudinary
-    const invoicePath = await invoiceService.generateInvoice(invoiceData);
-    if (!invoicePath) {
+  if (paymentType === "Wallet") {
+    // Check wallet balance
+    if (totalCost > user.wallet.balance) {
       return res.status(400).json({
         success: false,
-        message: "Invoice generation failed, no file path returned",
+        message: "Your balance is not enough to book this trip",
       });
     }
-    // Upload Invoice to Cloudinary without needing to store locally
-    const cloudinaryResponse = await cloudinary.uploader.upload(invoicePath, {
-      folder: "invoices",
-      resource_type: "raw",
-    });
 
-    // Update user with Cloudinary invoice URL
+    // Deduct from wallet balance
     await userModel.findByIdAndUpdate(
       userId,
       {
-        $set: { "Booked.$[elem].invoiceURL": cloudinaryResponse.secure_url },
-      },
-      {
-        arrayFilters: [{ "elem.tripId": tripId }],
-        new: true,
-      }
-    );
-
-    // 4. Add user to group chat or create a new one
-    let chatGroup = await GroupChat.findOne({ tripId });
-    if (!chatGroup) {
-      chatGroup = await GroupChat.create({
-        tripId,
-        groupName: `${trip.tripTitle} Chat`,
-        participants: [userId],
-        lastMessage: {
-          text: "Welcome to the trip!",
-          senderId: userId,
-          seen: false,
+        $inc: {
+          "wallet.balance": -totalCost,
+          "wallet.TotalWithdraw": totalCost,
         },
-      });
-    } else if (
-      !chatGroup.participants.some(
-        (participant) => participant.toString() === userId.toString()
-      )
-    ) {
-      chatGroup.participants.push(userId);
-      await chatGroup.save();
-    }
+      },
+      { new: true }
+    );
+  } else {
+    // Handle external payment methods
+    let paymentResponse;
 
-    // Final response
-    res.status(200).json({
-      success: true,
-      message: "The trip has been booked successfully",
-      transactionCode: transaction.transactionId,
-      invoiceURL: cloudinaryResponse.secure_url,
-    });
-  } catch (error) {
-    console.error("Error during booking process:", error.message);
-    res.status(500).json({
-      success: false,
-      message: "Booking process failed",
-      error: error.message,
-    });
+    switch (paymentType) {
+      case "Card":
+        paymentResponse = await initiateCardPaymentService({
+          amount: totalCost,
+          name: `Trip Booking`,
+        });
+        break;
+      case "PayPal":
+        paymentResponse = await initiatePayPalPaymentService({
+          amount: totalCost,
+          name: `Trip Booking`,
+        });
+        break;
+      case "Apple":
+        paymentResponse = await initiateApplePayPaymentService({
+          amount: totalCost,
+          name: `Trip Booking`,
+        });
+        break;
+      case "Google":
+        paymentResponse = await initiateGooglePayPaymentService({
+          amount: totalCost,
+          name: `Trip Booking`,
+        });
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: "Invalid payment type",
+        });
+    }
+    if (paymentResponse?.result?.checkoutData?.postUrl) {
+      // Save transaction details even for external payments
+      const transactionId = randomstring.generate({
+        length: 7,
+        charset: "numeric",
+      });
+
+      const transaction = await transactionsModel.create({
+        actorId: userId,
+        actorType: "User",
+        amount: totalCost,
+        type: "Trip",
+        method: paymentType,
+        status: "placed",
+        numberOfTickets: BookedTicket,
+        tripId: trip._id,
+        reason: trip.tripTitle,
+        transactionId,
+      });
+
+      // 3. Update trip details
+      trip.numberOfPeopleAvailable -= BookedTicket;
+      trip.totalEarnings += totalCost;
+      await trip.save();
+      await userModel.findByIdAndUpdate(
+        userId,
+        { $addToSet: { Booked: { tripId, BookedTicket } } },
+        { new: true }
+      );
+      return res.status(200).json({
+        success: true,
+        message: "Redirect to payment",
+        checkoutUrl: paymentResponse.result.checkoutData.postUrl,
+        transactionCode: transaction.transactionId,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Failed to initiate payment",
+      });
+    }
   }
+
+  // 1. Add trip to user's Booked trips
+  await userModel.findByIdAndUpdate(
+    userId,
+    { $addToSet: { Booked: { tripId, BookedTicket } } },
+    { new: true }
+  );
+
+  // 2. Create a transaction record
+  const transactionId = randomstring.generate({
+    length: 7,
+    charset: "numeric",
+  });
+  const transaction = await transactionsModel.create({
+    actorId: userId,
+    actorType: "User",
+    amount: totalCost,
+    type: "Trip",
+    method: paymentType,
+    status: "payed",
+    numberOfTickets: BookedTicket,
+    tripId: trip._id,
+    reason: trip.tripTitle,
+    transactionId,
+  });
+
+  // 3. Update trip details
+  trip.numberOfPeopleAvailable -= BookedTicket;
+  trip.totalEarnings += totalCost;
+  await trip.save();
+
+  transaction.date = moment(transaction.createdAt).format("MM/DD/YYYY");
+  await transaction.save();
+
+  // 4. Add user to group chat or create a new one
+  let chatGroup = await GroupChat.findOne({ tripId });
+  if (!chatGroup) {
+    chatGroup = await GroupChat.create({
+      tripId,
+      groupName: `${trip.tripTitle} Chat`,
+      participants: [userId],
+      lastMessage: {
+        text: "Welcome to the trip!",
+        senderId: userId,
+        seen: false,
+      },
+    });
+  } else if (
+    !chatGroup.participants.some(
+      (participant) => participant.toString() === userId.toString()
+    )
+  ) {
+    chatGroup.participants.push(userId);
+    await chatGroup.save();
+  }
+
+  // Final response
+  res.status(200).json({
+    success: true,
+    message: "The trip has been booked successfully",
+    transactionCode: transaction.transactionId,
+    //   invoiceURL: cloudinaryResponse.secure_url,
+  });
 });
 
 export const handleWebhook = async (req, res, next) => {
@@ -473,10 +443,15 @@ function isValidSignature(eventData, signature) {
     eventData.attemptNumber,
   ].join(",");
 
+  console.log("Data used for hash:", data); // Debugging
+  console.log("Incoming Signature:", signature); // Debugging
+
   const hash = crypto
-    .createHmac("sha256", process.env.SECRET_KEY) // Ensure SECRET_KEY is set in your environment variables
+    .createHmac("sha256", process.env.SECRET_KEY) // Ensure SECRET_KEY is set
     .update(data)
     .digest("base64");
+
+  console.log("Generated Hash:", hash); // Debugging
 
   return signature === hash;
 }
