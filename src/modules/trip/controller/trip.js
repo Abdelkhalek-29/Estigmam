@@ -436,32 +436,32 @@ export const handleWebhook = async (req, res, next) => {
 };
 
 function isValidSignature(eventData, signature) {
+  if (!process.env.SECRET_KEY) {
+    console.error("SECRET_KEY is not set.");
+    return false; // Fail validation if the key is missing
+  }
+
+  const data = [
+    eventData.orderId || "",
+    eventData.orderStatus || "",
+    eventData.eventId || "",
+    eventData.eventType || "",
+    eventData.timeStamp || "",
+    eventData.originalOrderId || "",
+    eventData.merchantOrderReference || "",
+    eventData.attemptNumber || "",
+  ].join(",");
+
   try {
-    const data = [
-      eventData.orderId || "",
-      eventData.orderStatus || "",
-      eventData.eventId || "",
-      eventData.eventType || "",
-      eventData.timeStamp || "",
-      eventData.originalOrderId || "",
-      eventData.merchantOrderReference || "",
-      eventData.attemptNumber || "",
-    ].join(",");
-
-    console.log("Data used for hash:", data); // Debugging
-    console.log("Incoming Signature:", signature); // Debugging
-
     const hash = crypto
       .createHmac("sha256", process.env.SECRET_KEY)
       .update(data)
       .digest("base64");
 
-    console.log("Generated Hash:", hash); // Debugging
-
     return signature === hash;
   } catch (error) {
     console.error("Error validating signature:", error);
-    return false; // Fail-safe: reject invalid signatures
+    return false; // Fail validation on errors
   }
 }
 
