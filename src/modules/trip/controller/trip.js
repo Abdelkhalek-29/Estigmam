@@ -1225,8 +1225,8 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
   const trips = await tripModel.find({ _id: { $in: tripIds } }).populate([
     { path: "typeOfPlace", select: "name_ar name_en" },
     { path: "category", select: "name_ar name_en" },
-    { path: "bedType", select: "name_ar name_en" },
-    { path: "addition", select: "name_ar name_en" },
+    { path: "bedType", select: "name_ar name_en image" },
+    { path: "addition", select: "name_ar name_en Image" },
     {
       path: "tripLeaderId",
       select: "profileImage _id name tripsCounter averageRating",
@@ -1254,12 +1254,16 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
         ? trip.typeOfPlace[nameField]
         : "";
       const activityName = trip.activity ? trip.activity[nameField] : "";
-      const additionNames = trip.addition
-        .map((addition) => addition[nameField] || "")
-        .filter(Boolean);
-      const bedTypeNames = trip.bedType
-        .map((bedType) => bedType[nameField] || "")
-        .filter(Boolean);
+      const additionDetails = trip.addition.map((addition) => ({
+        _id: addition._id,
+        name: addition[nameField] || "",
+        image: addition.Image || "",
+      }));
+      const bedTypeDetails = trip.bedType.map((bedType) => ({
+        _id: bedType._id,
+        name: bedType[nameField] || "",
+        image: bedType.image || "",
+      }));
 
       return {
         ...trip.toObject(),
@@ -1277,14 +1281,8 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
           _id: trip.activity?._id || "",
           name: activityName,
         },
-        bedType: bedTypeNames.map((name, index) => ({
-          _id: trip.bedType[index]?._id || "",
-          name,
-        })),
-        addition: additionNames.map((name, index) => ({
-          _id: trip.addition[index]?._id || "",
-          name,
-        })),
+        bedType: bedTypeDetails,
+        addition: additionDetails,
         ...(trip.status === "pending" && { commentsCount }),
       };
     })
