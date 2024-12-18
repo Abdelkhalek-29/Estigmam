@@ -556,12 +556,12 @@ export const getTrip = asyncHandler(async (req, res, next) => {
     })
     .populate({
       path: "addition",
-      select: `${nameField}`,
+      select: `${nameField} Image`,
       ref: "Addition",
     })
     .populate({
       path: "bedType",
-      select: `${nameField}`,
+      select: `${nameField} image`,
       ref: "BedType",
     })
     .populate({
@@ -590,10 +590,12 @@ export const getTrip = asyncHandler(async (req, res, next) => {
       addition: trip.addition.map((add) => ({
         _id: add._id,
         name: extractName(add),
+        image: add.Image,
       })),
       bedType: trip.bedType.map((bed) => ({
         _id: bed._id,
         name: extractName(bed),
+        image: bed.image,
       })),
       category: {
         _id: trip.category._id,
