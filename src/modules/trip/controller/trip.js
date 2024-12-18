@@ -333,7 +333,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
     amount: totalCost,
     type: "Trip",
     method: paymentType,
-    status: "payed",
+    status: "Payed",
     numberOfTickets: BookedTicket,
     tripId: trip._id,
     reason: trip.tripTitle,
@@ -369,12 +369,13 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
     chatGroup.participants.push(userId);
     await chatGroup.save();
   }
-
   // Final response
   res.status(200).json({
     success: true,
     message: "The trip has been booked successfully",
     transactionCode: transaction.transactionId,
+    tripId: trip._id,
+
     //   invoiceURL: cloudinaryResponse.secure_url,
   });
 });
