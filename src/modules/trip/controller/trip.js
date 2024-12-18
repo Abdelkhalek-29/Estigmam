@@ -941,6 +941,7 @@ export const home = asyncHandler(async (req, res, next) => {
 
   const nameField = language === "ar" ? "name_ar" : "name_en";
 
+  // Fetch types of places
   const types = await typesOfPlacesModel
     .find({ categoryId })
     .select(`${nameField} image`);
@@ -949,11 +950,12 @@ export const home = asyncHandler(async (req, res, next) => {
     return next(new Error("Types not found", { status: 404 }));
   }
 
+  // Fetch trips with populated fields
   const trips = await tripModel
     .find({ offer: { $gt: 0 }, category: categoryId })
     .populate("tripLeaderId", "name profileImage tripsCounter averageRating")
-    .populate("addition", "name")
-    .populate("bedType", "name")
+    .populate("addition", `${nameField} Image`)
+    .populate("bedType", `${nameField} image`)
     .populate({
       path: "typeOfPlace",
       select: `${nameField} _id`,
@@ -972,11 +974,13 @@ export const home = asyncHandler(async (req, res, next) => {
       options: { strictPopulate: false },
     });
 
+  // Fetch banners
   const banner = await bannerModel.find({ categoryId });
   if (!banner || banner.length === 0) {
     return next(new Error("Banner not found!", { status: 404 }));
   }
 
+  // Fetch user likes
   let userLikes = [];
   if (req.user) {
     const user = await userModel.findById(req.user._id).populate("Likes");
@@ -985,20 +989,41 @@ export const home = asyncHandler(async (req, res, next) => {
     }
   }
 
+  // Process trips with favourites and renaming fields
   const tripsWithFavourite = trips.map((trip) => {
     const isFavourite = userLikes.includes(trip._id.toString());
     const tripObject = trip.toObject();
 
+    // Rename category name field
     if (tripObject.category) {
       tripObject.category.name = tripObject.category[nameField];
       delete tripObject.category[nameField];
     }
 
+    // Rename typeOfPlace name field
     if (tripObject.typeOfPlace) {
       tripObject.typeOfPlace.name = tripObject.typeOfPlace[nameField];
       delete tripObject.typeOfPlace[nameField];
     }
 
+    // Rename addition and bedType fields
+    if (tripObject.addition && Array.isArray(tripObject.addition)) {
+      tripObject.addition = tripObject.addition.map((add) => ({
+        _id: add._id,
+        name: add[nameField],
+        image: add.Image,
+      }));
+    }
+
+    if (tripObject.bedType && Array.isArray(tripObject.bedType)) {
+      tripObject.bedType = tripObject.bedType.map((bed) => ({
+        _id: bed._id,
+        name: bed[nameField],
+        image: bed.image,
+      }));
+    }
+
+    // Process activity name field
     if (tripObject.activity) {
       const activityName = tripObject.activity[nameField] || "";
       const typeName = tripObject.activity.type
@@ -1022,8 +1047,8 @@ export const home = asyncHandler(async (req, res, next) => {
     };
   });
 
+  // Process types and activities with translated names
   const typesWithTranslatedNames = [];
-
   for (const type of types) {
     const typeObject = type.toObject();
     const baseTypeName = typeObject[nameField];
