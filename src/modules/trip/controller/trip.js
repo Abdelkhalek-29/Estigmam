@@ -23,6 +23,10 @@ import GroupChat from "../../../../DB/model/groupChat,model.js";
 import berthModel from "../../../../DB/model/berth.model.js";
 import { getRandomLocationInCircle } from "../../../utils/RandomLocation.js";
 import { InvoiceService } from "../../../utils/invoiceService.js";
+import crypto from "crypto";
+import dotenv from "dotenv";
+dotenv.config();
+
 import {
   initiateApplePayPaymentService,
   initiateCardPaymentService,
@@ -431,31 +435,36 @@ export const handleWebhook = async (req, res, next) => {
   res.status(200).send("Event received");
 };
 
-// Helper function to validate the signature
 function isValidSignature(eventData, signature) {
-  const data = [
-    eventData.orderId,
-    eventData.orderStatus,
-    eventData.eventId,
-    eventData.eventType,
-    eventData.timeStamp,
-    eventData.originalOrderId,
-    eventData.merchantOrderReference,
-    eventData.attemptNumber,
-  ].join(",");
+  try {
+    const data = [
+      eventData.orderId || "",
+      eventData.orderStatus || "",
+      eventData.eventId || "",
+      eventData.eventType || "",
+      eventData.timeStamp || "",
+      eventData.originalOrderId || "",
+      eventData.merchantOrderReference || "",
+      eventData.attemptNumber || "",
+    ].join(",");
 
-  console.log("Data used for hash:", data); // Debugging
-  console.log("Incoming Signature:", signature); // Debugging
+    console.log("Data used for hash:", data); // Debugging
+    console.log("Incoming Signature:", signature); // Debugging
 
-  const hash = crypto
-    .createHmac("sha256", process.env.SECRET_KEY) // Ensure SECRET_KEY is set
-    .update(data)
-    .digest("base64");
+    const hash = crypto
+      .createHmac("sha256", process.env.SECRET_KEY)
+      .update(data)
+      .digest("base64");
 
-  console.log("Generated Hash:", hash); // Debugging
+    console.log("Generated Hash:", hash); // Debugging
 
-  return signature === hash;
+    return signature === hash;
+  } catch (error) {
+    console.error("Error validating signature:", error);
+    return false; // Fail-safe: reject invalid signatures
+  }
 }
+
 export const deleteTrip = asyncHandler(async (req, res, next) => {
   const ownerId = req.owner?._id;
   const userId = req.user?._id;
