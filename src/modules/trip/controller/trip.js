@@ -388,10 +388,17 @@ export const handleWebhook = async (req, res, next) => {
   const eventData = req.body;
   const signature = req.headers["x-signature"];
 
+  console.log("Received Event Data:", eventData);
+  console.log("Received Signature:", signature);
+
   if (!isValidSignature(eventData, signature)) {
+    console.error("Signature validation failed.");
     return res.status(400).send("Invalid signature");
   }
 
+  console.log("Signature validation succeeded.");
+
+  // Continue with existing logic
   const { eventType, orderStatus, orderId } = eventData;
 
   if (eventType === "Authenticate" && orderStatus === "AUTHENTICATED") {
@@ -438,7 +445,7 @@ export const handleWebhook = async (req, res, next) => {
 function isValidSignature(eventData, signature) {
   if (!process.env.SECRET_KEY) {
     console.error("SECRET_KEY is not set.");
-    return false; // Fail validation if the key is missing
+    return false;
   }
 
   const data = [
@@ -452,16 +459,22 @@ function isValidSignature(eventData, signature) {
     eventData.attemptNumber || "",
   ].join(",");
 
+  console.log("Data used for hash:", data);
+  console.log("SECRET_KEY:", process.env.SECRET_KEY);
+
   try {
     const hash = crypto
       .createHmac("sha256", process.env.SECRET_KEY)
       .update(data)
       .digest("base64");
 
+    console.log("Generated Hash:", hash);
+    console.log("Incoming Signature:", signature);
+
     return signature === hash;
   } catch (error) {
     console.error("Error validating signature:", error);
-    return false; // Fail validation on errors
+    return false;
   }
 }
 
