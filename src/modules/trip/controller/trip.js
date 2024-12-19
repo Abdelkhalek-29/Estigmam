@@ -447,40 +447,22 @@ export const handleWebhook = async (req, res, next) => {
   res.status(200).send("Event received");
 };
 
-function isValidSignature(eventData, signature) {
-  if (!process.env.SECRET_KEY) {
-    console.error("SECRET_KEY is not set.");
-    return false;
-  }
+function isValidSignature(eventData, incomingSignature) {
+  const { orderId, orderStatus, eventId, eventType, timeStamp } = eventData;
 
-  const data = [
-    eventData.orderId || "",
-    eventData.orderStatus || "",
-    eventData.eventId || "",
-    eventData.eventType || "",
-    eventData.timeStamp || "",
-    eventData.originalOrderId || "",
-    eventData.merchantOrderReference || "",
-    eventData.attemptNumber || "",
-  ].join(",");
-
+  // Reconstruct the data string
+  const data = `${orderId},${orderStatus},${eventId},${eventType},${timeStamp}`;
   console.log("Data used for hash:", data);
-  console.log("SECRET_KEY:", process.env.SECRET_KEY);
 
-  try {
-    const hash = crypto
-      .createHmac("sha256", process.env.SECRET_KEY)
-      .update(data)
-      .digest("base64");
+  // Generate the hash
+  const generatedHash = crypto
+    .createHmac("sha256", Buffer.from(process.env.SECRET_KEY, "utf-8"))
+    .update(data, "utf-8")
+    .digest("base64");
+  console.log("Generated Hash:", generatedHash);
 
-    console.log("Generated Hash:", hash);
-    console.log("Incoming Signature:", signature);
-
-    return signature === hash;
-  } catch (error) {
-    console.error("Error validating signature:", error);
-    return false;
-  }
+  // Compare hashes (case-sensitive)
+  return generatedHash === incomingSignature;
 }
 
 export const deleteTrip = asyncHandler(async (req, res, next) => {
