@@ -386,104 +386,79 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
 
 export const handleWebhook = async (req, res, next) => {
   const eventData = req.body;
-  const signature =
-    req.headers["x-signature"] ||
-    req.headers["X-Signature"] ||
-    req.headers["signature"] ||
-    eventData.signature; // Fallback to signature in body
+  // Get signature from headers (Noon sends it in x-signature header)
+  const signature = req.headers["x-signature"];
 
   console.log("Headers:", req.headers);
   console.log("Received Event Data:", eventData);
   console.log("Received Signature:", signature);
 
-  if (!isValidSignature(eventData, signature)) {
-    console.error("Signature validation failed.");
-    return res.status(400).send("Invalid signature");
-  }
-
-  console.log("Signature validation succeeded.");
-
-  // Continue with existing logic
-  const { eventType, orderStatus, orderId } = eventData;
-
-  if (eventType === "Authenticate" && orderStatus === "AUTHENTICATED") {
-    try {
-      const confirm = await transactionsModel.findOneAndUpdate(
-        { _id: orderId },
-        { status: "payed" }
-      );
-
-      if (confirm) {
-        console.log(`Order ${orderId} authenticated successfully.`);
-      } else {
-        console.log(`Order ${orderId} not found.`);
-      }
-    } catch (error) {
-      console.error(`Error updating order ${orderId}:`, error);
-      return res.status(500).send("Internal Server Error");
+  try {
+    if (!signature) {
+      console.error("No signature provided in headers");
+      return res.status(400).send("No signature provided");
     }
-  } else if (eventType === "Fail" && orderStatus === "FAILED") {
-    // Handle the FAILED event
-    try {
-      const failed = await transactionsModel.findOneAndUpdate(
-        { _id: orderId },
-        { status: "failed" }
-      );
 
-      if (failed) {
-        console.log(`Order ${orderId} authentication failed.`);
-      } else {
-        console.log(`Order ${orderId} not found.`);
-      }
-    } catch (error) {
-      console.error(`Error updating order ${orderId}:`, error);
-      return res.status(500).send("Internal Server Error");
+    if (!isValidSignature(eventData, process.env.NOON_SECRET_KEY, signature)) {
+      console.error("Signature validation failed");
+      return res.status(400).send("Invalid signature");
     }
-  } else {
-    console.log(`Received unknown event type: ${eventType}`);
-  }
 
-  // Respond to acknowledge the webhook
-  res.status(200).send("Event received");
+    console.log("Signature validation succeeded");
+
+    // Handle different order statuses
+    switch (eventData.orderStatus) {
+      case "AUTHORIZED":
+      case "AUTHENTICATED":
+        await transactionsModel.findOneAndUpdate(
+          { _id: eventData.orderId },
+          { status: "paid" }
+        );
+        break;
+
+      case "FAILED":
+        await transactionsModel.findOneAndUpdate(
+          { _id: eventData.orderId },
+          { status: "failed" }
+        );
+        break;
+
+      default:
+        console.log(`Unhandled order status: ${eventData.orderStatus}`);
+    }
+
+    return res.status(200).send("Webhook processed successfully");
+  } catch (error) {
+    console.error("Webhook processing error:", error);
+    return res.status(500).send("Internal server error");
+  }
 };
 
-function isValidSignature(eventData, secretKey) {
-  // Define the required parameters in the correct order
-  const {
-    orderId,
-    orderStatus,
-    eventId,
-    eventType,
-    timeStamp,
-    originalOrderId,
-    merchantOrderReference,
-    attemptNumber,
-  } = eventData;
+function isValidSignature(payload, secretKey, receivedSignature) {
+  // Create string of all values in the exact order
+  const dataString = [
+    payload.orderId,
+    payload.orderStatus,
+    payload.eventId,
+    payload.eventType,
+    payload.timeStamp,
+    payload.originalOrderId || "",
+    payload.merchantOrderReference || "",
+    payload.attemptNumber || "",
+  ].join("");
 
-  // Build the string to hash in exact order without extra spaces
-  const dataToHash = [
-    orderId,
-    orderStatus,
-    eventId,
-    eventType,
-    timeStamp,
-    originalOrderId || "", // Add empty string if not provided
-    merchantOrderReference || "", // Add empty string if not provided
-    attemptNumber || "", // Add empty string if not provided
-  ].join(",");
+  console.log("Data string for validation:", dataString);
 
-  // Generate the HMAC hash using the secret key
-  const generatedHash = crypto
-    .createHmac("sha256", secretKey)
-    .update(dataToHash, "utf8")
-    .digest("base64"); // Use base64 encoding
+  // Create HMAC using SHA-512
+  const hmac = crypto.createHmac("sha512", secretKey);
+  hmac.update(dataString);
+  const calculatedSignature = hmac.digest("base64");
 
-  // Log the generated hash and data for debugging
-  console.log("Data used for hash:", dataToHash);
-  console.log("Generated Hash:", generatedHash);
+  console.log("Calculated signature:", calculatedSignature);
+  console.log("Received signature:", receivedSignature);
 
-  // Compare the generated hash with the incoming signature
-  return generatedHash === eventData.signature;
+  // Compare signatures
+  return calculatedSignature === receivedSignature;
 }
 
 export const deleteTrip = asyncHandler(async (req, res, next) => {
