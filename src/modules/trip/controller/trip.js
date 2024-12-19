@@ -386,8 +386,13 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
 
 export const handleWebhook = async (req, res, next) => {
   const eventData = req.body;
-  const signature = req.headers["x-signature"];
+  const signature =
+    req.headers["x-signature"] ||
+    req.headers["X-Signature"] ||
+    req.headers["signature"] ||
+    eventData.signature; // Fallback to signature in body
 
+  console.log("Headers:", req.headers);
   console.log("Received Event Data:", eventData);
   console.log("Received Signature:", signature);
 
