@@ -432,7 +432,6 @@ export const handleWebhook = async (req, res, next) => {
   }
 };
 function createDataString(payload) {
-  // Join values with commas as per Noon's specification
   return [
     payload.orderId,
     payload.orderStatus,
@@ -442,13 +441,15 @@ function createDataString(payload) {
     payload.originalOrderId || "",
     payload.merchantOrderReference || "",
     payload.attemptNumber || "",
-  ].join(","); // Changed to comma separator
+  ]
+    .filter(Boolean)
+    .join(","); // Filter out empty values to prevent trailing commas
 }
 
 function calculateSignature(dataString, secretKey) {
   const hmac = crypto.createHmac("sha512", secretKey);
-  hmac.update(dataString, "utf8"); // Explicitly specify UTF-8 encoding
-  return hmac.digest("base64");
+  hmac.update(dataString, "utf8"); // Ensure the data is interpreted correctly
+  return hmac.digest("base64"); // Output the HMAC in Base64 encoding
 }
 
 function isValidSignature(payload, secretKey, receivedSignature) {
