@@ -386,8 +386,12 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
 
 export const handleWebhook = async (req, res, next) => {
   const eventData = req.body;
-  // Get signature from headers (Noon sends it in x-signature header)
-  const signature = req.headers["x-signature"];
+
+  // Try to get signature from headers or body
+  const signature =
+    req.headers["x-signature"] ||
+    req.headers["X-Signature"] ||
+    eventData.signature;
 
   console.log("Headers:", req.headers);
   console.log("Received Event Data:", eventData);
@@ -395,7 +399,7 @@ export const handleWebhook = async (req, res, next) => {
 
   try {
     if (!signature) {
-      console.error("No signature provided in headers");
+      console.error("No signature found in headers or body");
       return res.status(400).send("No signature provided");
     }
 
@@ -410,17 +414,11 @@ export const handleWebhook = async (req, res, next) => {
     switch (eventData.orderStatus) {
       case "AUTHORIZED":
       case "AUTHENTICATED":
-        await transactionsModel.findOneAndUpdate(
-          { _id: eventData.orderId },
-          { status: "paid" }
-        );
+        await updateOrderStatus(transactionsModel, eventData.orderId, "paid");
         break;
 
       case "FAILED":
-        await transactionsModel.findOneAndUpdate(
-          { _id: eventData.orderId },
-          { status: "failed" }
-        );
+        await updateOrderStatus(transactionsModel, eventData.orderId, "failed");
         break;
 
       default:
@@ -433,10 +431,8 @@ export const handleWebhook = async (req, res, next) => {
     return res.status(500).send("Internal server error");
   }
 };
-
-function isValidSignature(payload, secretKey, receivedSignature) {
-  // Create string of all values in the exact order
-  const dataString = [
+function createDataString(payload) {
+  return [
     payload.orderId,
     payload.orderStatus,
     payload.eventId,
@@ -446,21 +442,43 @@ function isValidSignature(payload, secretKey, receivedSignature) {
     payload.merchantOrderReference || "",
     payload.attemptNumber || "",
   ].join("");
+}
 
-  console.log("Data string for validation:", dataString);
-
-  // Create HMAC using SHA-512
+function calculateSignature(dataString, secretKey) {
   const hmac = crypto.createHmac("sha512", secretKey);
   hmac.update(dataString);
-  const calculatedSignature = hmac.digest("base64");
+  return hmac.digest("base64");
+}
 
+function isValidSignature(payload, secretKey, receivedSignature) {
+  const dataString = createDataString(payload);
+  console.log("Data string for validation:", dataString);
+
+  const calculatedSignature = calculateSignature(dataString, secretKey);
   console.log("Calculated signature:", calculatedSignature);
   console.log("Received signature:", receivedSignature);
 
-  // Compare signatures
   return calculatedSignature === receivedSignature;
 }
+async function updateOrderStatus(transactionsModel, orderId, status) {
+  try {
+    const result = await transactionsModel.findOneAndUpdate(
+      { _id: orderId },
+      { status }
+    );
 
+    if (!result) {
+      console.log(`Order ${orderId} not found`);
+      return false;
+    }
+
+    console.log(`Order ${orderId} status updated to ${status}`);
+    return true;
+  } catch (error) {
+    console.error(`Error updating order ${orderId}:`, error);
+    throw error;
+  }
+}
 export const deleteTrip = asyncHandler(async (req, res, next) => {
   const ownerId = req.owner?._id;
   const userId = req.user?._id;
