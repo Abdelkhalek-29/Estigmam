@@ -431,6 +431,7 @@ export const handleWebhook = async (req, res, next) => {
     return res.status(500).send("Internal server error");
   }
 };
+
 function createDataString(payload) {
   return [
     payload.orderId,
@@ -438,30 +439,31 @@ function createDataString(payload) {
     payload.eventId,
     payload.eventType,
     payload.timeStamp,
-    payload.originalOrderId || "",
-    payload.merchantOrderReference || "",
-    payload.attemptNumber || "",
+    payload.originalOrderId ? payload.originalOrderId : undefined,
+    payload.merchantOrderReference ? payload.merchantOrderReference : undefined,
+    payload.attemptNumber ? payload.attemptNumber : undefined,
   ]
-    .filter(Boolean)
-    .join(","); // Filter out empty values to prevent trailing commas
+    .filter(Boolean) // Remove undefined values
+    .join(","); // Join with commas
 }
 
 function calculateSignature(dataString, secretKey) {
   const hmac = crypto.createHmac("sha512", secretKey);
-  hmac.update(dataString, "utf8"); // Ensure the data is interpreted correctly
-  return hmac.digest("base64"); // Output the HMAC in Base64 encoding
+  hmac.update(dataString, "utf8"); // Ensure correct encoding
+  return hmac.digest("base64"); // Output as Base64
 }
 
 function isValidSignature(payload, secretKey, receivedSignature) {
   const dataString = createDataString(payload);
-  console.log("Data string for validation:", dataString);
+  console.log("Data String for Validation:", dataString);
 
   const calculatedSignature = calculateSignature(dataString, secretKey);
-  console.log("Calculated signature:", calculatedSignature);
-  console.log("Received signature:", receivedSignature);
+  console.log("Calculated Signature:", calculatedSignature);
+  console.log("Received Signature:", receivedSignature);
 
   return calculatedSignature === receivedSignature;
 }
+
 async function updateOrderStatus(transactionsModel, orderId, status) {
   try {
     const result = await transactionsModel.findOneAndUpdate(
@@ -481,6 +483,7 @@ async function updateOrderStatus(transactionsModel, orderId, status) {
     throw error;
   }
 }
+
 export const deleteTrip = asyncHandler(async (req, res, next) => {
   const ownerId = req.owner?._id;
   const userId = req.user?._id;
