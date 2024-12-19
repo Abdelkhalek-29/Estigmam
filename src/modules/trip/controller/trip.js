@@ -447,22 +447,43 @@ export const handleWebhook = async (req, res, next) => {
   res.status(200).send("Event received");
 };
 
-function isValidSignature(eventData, incomingSignature) {
-  const { orderId, orderStatus, eventId, eventType, timeStamp } = eventData;
+function isValidSignature(eventData, secretKey) {
+  // Define the required parameters in the correct order
+  const {
+    orderId,
+    orderStatus,
+    eventId,
+    eventType,
+    timeStamp,
+    originalOrderId,
+    merchantOrderReference,
+    attemptNumber,
+  } = eventData;
 
-  // Reconstruct the data string
-  const data = `${orderId},${orderStatus},${eventId},${eventType},${timeStamp}`;
-  console.log("Data used for hash:", data);
+  // Build the string to hash in exact order without extra spaces
+  const dataToHash = [
+    orderId,
+    orderStatus,
+    eventId,
+    eventType,
+    timeStamp,
+    originalOrderId || "", // Add empty string if not provided
+    merchantOrderReference || "", // Add empty string if not provided
+    attemptNumber || "", // Add empty string if not provided
+  ].join(",");
 
-  // Generate the hash
+  // Generate the HMAC hash using the secret key
   const generatedHash = crypto
-    .createHmac("sha256", Buffer.from(process.env.SECRET_KEY, "utf-8"))
-    .update(data, "utf-8")
-    .digest("base64");
+    .createHmac("sha256", secretKey)
+    .update(dataToHash, "utf8")
+    .digest("base64"); // Use base64 encoding
+
+  // Log the generated hash and data for debugging
+  console.log("Data used for hash:", dataToHash);
   console.log("Generated Hash:", generatedHash);
 
-  // Compare hashes (case-sensitive)
-  return generatedHash === incomingSignature;
+  // Compare the generated hash with the incoming signature
+  return generatedHash === eventData.signature;
 }
 
 export const deleteTrip = asyncHandler(async (req, res, next) => {
