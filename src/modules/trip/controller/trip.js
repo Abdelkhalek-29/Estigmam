@@ -278,7 +278,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
     }
     if (paymentResponse?.result?.checkoutData?.postUrl) {
       // Save transaction details even for external payments
-      const transactionId = randomstring.generate({
+      const orderId = randomstring.generate({
         length: 7,
         charset: "numeric",
       });
@@ -293,7 +293,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
         numberOfTickets: BookedTicket,
         tripId: trip._id,
         reason: trip.tripTitle,
-        transactionId,
+        orderId,
       });
 
       // 3. Update trip details
@@ -327,7 +327,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
   );
 
   // 2. Create a transaction record
-  const transactionId = randomstring.generate({
+  const orderId = randomstring.generate({
     length: 7,
     charset: "numeric",
   });
@@ -341,7 +341,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
     numberOfTickets: BookedTicket,
     tripId: trip._id,
     reason: trip.tripTitle,
-    transactionId,
+    orderId,
   });
 
   // 3. Update trip details

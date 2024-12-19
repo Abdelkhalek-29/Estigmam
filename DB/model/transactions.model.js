@@ -18,6 +18,11 @@ const transactionSchema = new Schema(
       enum: ["placed", "Payed", "failed"],
       default: "placed",
     },
+    orderId: {
+      type: String, // or Number if you expect numeric order IDs
+      required: true, // if the field is mandatory
+      unique: true, // optional, if you want each orderId to be unique
+    },
     numberOfTickets: Number,
     tripId: { type: Types.ObjectId },
     reason: { type: String },
