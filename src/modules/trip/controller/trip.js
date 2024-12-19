@@ -309,7 +309,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
         success: true,
         message: "Redirect to payment",
         checkoutUrl: paymentResponse.result.checkoutData.postUrl,
-        transactionCode: transaction.transactionId,
+        transactionCode: transaction.orderId, // Ensure transactionCode is correctly returned
       });
     } else {
       return res.status(400).json({
@@ -373,14 +373,13 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
     chatGroup.participants.push(userId);
     await chatGroup.save();
   }
+
   // Final response
   res.status(200).json({
     success: true,
     message: "The trip has been booked successfully",
-    transactionCode: transaction.transactionId,
+    transactionCode: transaction.orderId, // Ensure transactionCode is returned here as well
     tripId: trip._id,
-
-    //   invoiceURL: cloudinaryResponse.secure_url,
   });
 });
 
