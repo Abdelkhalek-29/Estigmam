@@ -432,6 +432,7 @@ export const handleWebhook = async (req, res, next) => {
   }
 };
 function createDataString(payload) {
+  // Join values with commas as per Noon's specification
   return [
     payload.orderId,
     payload.orderStatus,
@@ -441,12 +442,12 @@ function createDataString(payload) {
     payload.originalOrderId || "",
     payload.merchantOrderReference || "",
     payload.attemptNumber || "",
-  ].join("");
+  ].join(","); // Changed to comma separator
 }
 
 function calculateSignature(dataString, secretKey) {
   const hmac = crypto.createHmac("sha512", secretKey);
-  hmac.update(dataString);
+  hmac.update(dataString, "utf8"); // Explicitly specify UTF-8 encoding
   return hmac.digest("base64");
 }
 
