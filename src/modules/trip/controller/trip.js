@@ -309,7 +309,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
         success: true,
         message: "Redirect to payment",
         checkoutUrl: paymentResponse.result.checkoutData.postUrl,
-        transactionCode: transaction.orderId, // Ensure transactionCode is correctly returned
+        transactionCode: transaction.orderId,
       });
     } else {
       return res.status(400).json({
@@ -386,7 +386,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
 export const handleWebhook = async (req, res, next) => {
   const eventData = req.body;
 
-  // Try to get signature from headers or body
+  // Extract signature from headers or body
   const signature =
     req.headers["x-signature"] ||
     req.headers["X-Signature"] ||
@@ -410,18 +410,19 @@ export const handleWebhook = async (req, res, next) => {
     console.log("Signature validation succeeded");
 
     // Handle different order statuses
-    switch (eventData.orderStatus) {
+    const { orderStatus, orderId } = eventData;
+    switch (orderStatus) {
       case "AUTHORIZED":
       case "AUTHENTICATED":
-        await updateOrderStatus(transactionsModel, eventData.orderId, "paid");
+        await updateOrderStatus(transactionsModel, orderId, "paid");
         break;
 
       case "FAILED":
-        await updateOrderStatus(transactionsModel, eventData.orderId, "failed");
+        await updateOrderStatus(transactionsModel, orderId, "failed");
         break;
 
       default:
-        console.log(`Unhandled order status: ${eventData.orderStatus}`);
+        console.log(`Unhandled order status: ${orderStatus}`);
     }
 
     return res.status(200).send("Webhook processed successfully");
@@ -432,24 +433,25 @@ export const handleWebhook = async (req, res, next) => {
 };
 
 function createDataString(payload) {
+  // Concatenate fields in the exact required order
   return [
     payload.orderId,
     payload.orderStatus,
-    payload.eventId,
     payload.eventType,
+    payload.eventId,
     payload.timeStamp,
-    payload.originalOrderId ? payload.originalOrderId : undefined,
-    payload.merchantOrderReference ? payload.merchantOrderReference : undefined,
-    payload.attemptNumber ? payload.attemptNumber : undefined,
+    payload.originalOrderId, // Optional fields
+    payload.merchantOrderReference,
+    payload.attemptNumber,
   ]
-    .filter(Boolean) // Remove undefined values
-    .join(","); // Join with commas
+    .filter(Boolean) // Remove undefined or null values
+    .join(""); // Concatenate fields without separators
 }
 
 function calculateSignature(dataString, secretKey) {
-  const hmac = crypto.createHmac("sha512", secretKey);
+  const hmac = crypto.createHmac("sha256", secretKey); // Use SHA256
   hmac.update(dataString, "utf8"); // Ensure correct encoding
-  return hmac.digest("base64"); // Output as Base64
+  return hmac.digest("base64"); // Output as Base64 string
 }
 
 function isValidSignature(payload, secretKey, receivedSignature) {
@@ -467,7 +469,8 @@ async function updateOrderStatus(transactionsModel, orderId, status) {
   try {
     const result = await transactionsModel.findOneAndUpdate(
       { _id: orderId },
-      { status }
+      { status },
+      { new: true } // Return the updated document
     );
 
     if (!result) {
