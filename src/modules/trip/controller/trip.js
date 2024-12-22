@@ -385,8 +385,6 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
 
 export const handleWebhook = async (req, res, next) => {
   const eventData = req.body;
-
-  // Extract signature from headers or body
   const signature =
     req.headers["x-signature"] ||
     req.headers["X-Signature"] ||
@@ -409,7 +407,6 @@ export const handleWebhook = async (req, res, next) => {
 
     console.log("Signature validation succeeded");
 
-    // Handle different order statuses
     const { orderStatus, orderId } = eventData;
     switch (orderStatus) {
       case "AUTHORIZED":
@@ -433,25 +430,30 @@ export const handleWebhook = async (req, res, next) => {
 };
 
 function createDataString(payload) {
-  // Concatenate fields in the exact required order
-  return [
+  const fields = [
     payload.orderId,
     payload.orderStatus,
-    payload.eventType,
     payload.eventId,
+    payload.eventType,
     payload.timeStamp,
-    payload.originalOrderId, // Optional fields
-    payload.merchantOrderReference,
-    payload.attemptNumber,
-  ]
-    .filter(Boolean) // Remove undefined or null values
-    .join(""); // Concatenate fields without separators
+    payload.originalOrderId || "", // Default to empty string if undefined
+    payload.merchantOrderReference || "",
+    payload.attemptNumber || "",
+  ];
+
+  return fields.join(","); // Use a consistent delimiter if required by Noon
 }
 
 function calculateSignature(dataString, secretKey) {
-  const hmac = crypto.createHmac("sha256", secretKey); // Use SHA256
-  hmac.update(dataString, "utf8"); // Ensure correct encoding
-  return hmac.digest("base64"); // Output as Base64 string
+  console.log("Data String (pre-HMAC):", dataString);
+
+  const hmac = crypto.createHmac("sha512", secretKey);
+  hmac.update(dataString, "utf8");
+
+  const signature = hmac.digest("base64");
+  console.log("Generated Signature:", signature);
+
+  return signature;
 }
 
 function isValidSignature(payload, secretKey, receivedSignature) {
