@@ -1,198 +1,202 @@
+import fs from "fs";
 import PDFDocument from "pdfkit";
-import moment from "moment";
-import cloudinary from "../utils/cloudinary.js";
-export class InvoiceService {
-  constructor() {
-    this.doc = new PDFDocument({
+import path from "path";
+
+export function createInvoice(invoice, pathToSave) {
+  try {
+    validateInput(invoice);
+    const doc = new PDFDocument({
       size: "A4",
       margin: 50,
-      layout: "portrait",
+      bufferPages: true,
     });
+
+    setupDocument(doc, pathToSave);
+    addContent(doc, invoice);
+    finishDocument(doc);
+  } catch (err) {
+    console.error("Error generating invoice:", err);
+    throw new Error(`Invoice generation failed: ${err.message}`);
   }
+}
 
-  async generateInvoice(data) {
-    const {
-      invoiceNumber,
-      date,
-      customerName,
-      totalAmount,
-      numberOfPeople,
-      pricePerPerson,
-      discount,
-      subtotal,
-      roundingAmount,
-      paymentMethod,
-      cardLastDigits,
-      tripDetails,
-      bookingReference,
-    } = data;
-
-    // Create an array to capture PDF data as a buffer
-    const buffers = [];
-
-    // Attach listeners to the PDF stream
-    this.doc.on("data", buffers.push.bind(buffers)); // Push data into buffers
-    this.doc.on("end", async () => {
-      const buffer = Buffer.concat(buffers); // Concatenate the buffers
-
-      try {
-        const uploadResult = await this.uploadToCloudinary(buffer); // Upload the buffer to Cloudinary
-        console.log("Invoice uploaded successfully:", uploadResult);
-        // Return the result (public_id or relevant data)
-        return uploadResult;
-      } catch (error) {
-        console.error("Error uploading invoice:", error);
-        throw error; // Rethrow error to propagate failure
-      }
-    });
-
-    // Generate the content of the PDF
-    this.addHeader();
-    this.addInvoiceDetails(date, customerName);
-    this.addFinancialDetails({
-      totalAmount,
-      numberOfPeople,
-      pricePerPerson,
-      discount,
-      subtotal,
-      roundingAmount,
-    });
-    this.addPaymentDetails(paymentMethod, cardLastDigits);
-    this.addTripDetails(tripDetails);
-    this.addFooter(bookingReference);
-
-    // Finalize the PDF document
-    this.doc.end();
+function validateInput(invoice) {
+  if (
+    !invoice?.total ||
+    isNaN(parseFloat(invoice.total)) ||
+    parseFloat(invoice.total) <= 0
+  ) {
+    throw new Error(`Invalid total amount: ${invoice.total}`);
   }
-
-  // Cloudinary upload function
-  async uploadToCloudinary(buffer) {
-    return new Promise((resolve, reject) => {
-      // Log the cloudinary object and uploader to check if they're loaded correctly
-      console.log("Cloudinary:", cloudinary);
-      console.log("Cloudinary uploader:", cloudinary.v2.uploader);
-
-      if (!cloudinary.v2 || !cloudinary.v2.uploader) {
-        console.error("Cloudinary uploader is not available");
-        return reject(new Error("Cloudinary uploader is not available"));
-      }
-
-      const uploadStream = cloudinary.v2.uploader.upload_stream(
-        {
-          resource_type: "raw",
-          public_id: `invoices/${Date.now()}`,
-        },
-        (error, result) => {
-          if (error) {
-            return reject(error);
-          }
-          resolve(result.public_id); // Return the public_id
-        }
-      );
-
-      uploadStream.end(buffer);
-    });
+  if (!invoice?.bookingRef) {
+    throw new Error("Missing booking reference");
   }
+  if (!invoice?.tripDetails) {
+    throw new Error("Missing trip details");
+  }
+}
 
-  // Header content for the invoice
-  addHeader() {
-    this.doc
+function setupDocument(doc, pathToSave) {
+  const dir = path.dirname(pathToSave);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  doc.pipe(fs.createWriteStream(pathToSave));
+}
+
+function addContent(doc, invoice) {
+  // Header
+  addLogo(doc);
+  addHeaderText(doc, invoice);
+  addDividerLine(doc, 120);
+
+  // Main content
+  const startY = 140;
+  addSummaryBox(doc, invoice, startY);
+  addTripDetails(doc, invoice, startY + 180);
+  addPaymentInfo(doc, startY + 350);
+
+  // Footer
+  addFooter(doc);
+}
+
+function addLogo(doc) {
+  try {
+    const logoPath = path.resolve("./images/logo.png");
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, 50, 45, { width: 150 });
+    }
+  } catch (error) {
+    console.warn("Logo not found");
+  }
+}
+
+function addHeaderText(doc, invoice) {
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(24)
+    .text("INVOICE", 400, 45, { align: "right" })
+    .fontSize(12)
+    .font("Helvetica")
+    .text(`Date: ${new Date().toLocaleDateString()}`, 400, 75, {
+      align: "right",
+    })
+    .text(`Ref: ${invoice.bookingRef}`, 400, 90, { align: "right" });
+}
+
+function addDividerLine(doc, y) {
+  doc.moveTo(50, y).lineTo(550, y).strokeColor("#2563eb").lineWidth(2).stroke();
+}
+
+function addSummaryBox(doc, invoice, y) {
+  try {
+    doc
+      .roundedRect(50, y, 500, 160, 10)
+      .fillColor("#f8fafc")
+      .fill()
+      .fillColor("#000000");
+    doc
       .font("Helvetica-Bold")
-      .fontSize(24)
-      .text("ESTGMAM", 450, 85, { align: "right" });
-  }
-
-  // Invoice details (date, customer name, etc.)
-  addInvoiceDetails(date, customerName) {
-    this.doc
-      .font("Helvetica-Bold")
+      .fontSize(14)
+      .text("Here is your trip receipt", 70, y + 20)
+      .font("Helvetica")
       .fontSize(12)
-      .text(moment(date).format("DD/MM/YYYY"), 450, 120, { align: "right" })
-      .text(customerName, 450, 145, { align: "right" })
-      .text("نأمل أن تكون قد استمتعت برحلتك", 450, 170, { align: "right" });
+      .text("We hope you enjoyed your trip", 70, y + 45)
+      .text(`Guests: ${invoice.numberOfPeople}`, 70, y + 65)
+      .text(
+        `Price per Guest: SAR ${invoice.pricePerPerson?.toFixed(2) || 0}`,
+        70,
+        y + 85
+      )
+      .text(`Discount: %${invoice.discount?.toFixed(2) || 0}`, 70, y + 105);
+    const totalAmount = parseFloat(invoice.total);
+    if (isNaN(totalAmount)) {
+      console.error("Invalid total:", invoice.total);
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(16)
+        .fillColor("red")
+        .text("Error: Invalid Total Amount", 70, y + 120);
+    } else {
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(16)
+        .fillColor("#2563eb")
+        .text("Total Amount:", 70, y + 120)
+        .text(`SAR ${totalAmount.toFixed(2)}`, 500, y + 120, {
+          align: "right",
+        });
+    }
+  } catch (error) {
+    console.error("Error adding summary box:", error.message);
+    throw error;
   }
+}
 
-  // Financial details
-  addFinancialDetails({
-    totalAmount,
-    numberOfPeople,
-    pricePerPerson,
-    discount,
-    subtotal,
-    roundingAmount,
-  }) {
-    const startY = 200;
+function addTripDetails(doc, invoice, y) {
+  doc
+    .fillColor("#000000")
+    .font("Helvetica-Bold")
+    .fontSize(14)
+    .text("Trip Details", 70, y)
+    .font("Helvetica")
+    .fontSize(12)
+    .text(`Trip: ${invoice.tripDetails}`, 70, y + 25, {
+      width: 460,
+      align: "justify",
+      lineGap: 5,
+    })
 
-    this.addTableRow("الإجمالي", totalAmount.toFixed(2), startY);
-    this.addTableRow("عدد الأفراد", numberOfPeople, startY + 30);
-    this.addTableRow(
-      "سعر الفرد الواحد",
-      pricePerPerson.toFixed(2),
-      startY + 60
+    .text(
+      `Trip Duration: ${invoice.tripDuration || "Not available"}`,
+      70,
+      y + 45,
+      {
+        width: 460,
+        align: "justify",
+        lineGap: 5,
+      }
     );
-    this.addTableRow("الخصم", discount.toFixed(2), startY + 90);
-    this.addTableRow("الإجمالي الفرعي", subtotal.toFixed(2), startY + 120);
-    this.addTableRow("التقريب", roundingAmount.toFixed(2), startY + 150);
-  }
+}
 
-  // Helper to add a row to the financial table
-  addTableRow(label, value, y) {
-    this.doc
-      .font("Helvetica-Bold")
-      .fontSize(12)
-      .text(label, 450, y, { align: "right" })
-      .text(`${value} جنيه مصري`, 200, y);
-  }
+function addPaymentInfo(doc, y) {
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(14)
+    .text("Payment Information", 70, y)
+    .font("Helvetica")
+    .fontSize(12)
+    .text(`Method:${invoice.method || "Not available"}`, 70, y + 25)
+    .text("Status: Paid", 70, y + 45)
+    .text(`Date: ${new Date().toLocaleDateString()}`, 70, y + 65);
+}
 
-  // Payment details (method, card info)
-  addPaymentDetails(paymentMethod, cardLastDigits) {
-    const y = 400;
-    this.doc
-      .font("Helvetica-Bold")
-      .fontSize(14)
-      .text("المدفوعات", 450, y, { align: "right" });
+function addFooter(doc) {
+  const pages = doc.bufferedPageRange().count;
+  for (let i = 0; i < pages; i++) {
+    doc.switchToPage(i);
 
-    this.doc
-      .font("Helvetica-Bold")
-      .fontSize(12)
-      .text(`باستخدام ${paymentMethod}`, 450, y + 30, { align: "right" })
-      .text(`**** ${cardLastDigits}`, 450, y + 50, { align: "right" });
-  }
+    doc
+      .moveTo(50, 750)
+      .lineTo(550, 750)
+      .strokeColor("#e2e8f0")
+      .lineWidth(1)
+      .stroke();
 
-  // Trip details (departure, arrival)
-  addTripDetails(tripDetails) {
-    const { departureDate, departureLocation, arrivalDate, arrivalLocation } =
-      tripDetails;
-    const y = 500;
-
-    this.doc
-      .font("Helvetica-Bold")
-      .fontSize(14)
-      .text("تفاصيل الرحلة", 450, y, { align: "right" });
-
-    this.doc
-      .font("Helvetica-Bold")
-      .fontSize(12)
-      .text(`${departureDate} - ${departureLocation}`, 450, y + 30, {
-        align: "right",
+    doc
+      .fillColor("#64748b")
+      .fontSize(10)
+      .text("Thank you for choosing our service!", 50, 760, {
+        align: "center",
+        width: 500,
       })
-      .text(`${arrivalDate} - ${arrivalLocation}`, 450, y + 50, {
-        align: "right",
+      .text(`Page ${i + 1} of ${pages}`, 50, 780, {
+        align: "center",
+        width: 500,
       });
   }
+}
 
-  // Footer (booking reference)
-  addFooter(bookingReference) {
-    const y = 700;
-    this.doc
-      .font("Helvetica-Bold")
-      .fontSize(10)
-      .text(
-        "هذا ليس فاتورة ضريبية هذا إيصال الدفع مقابل خدمة النقل المقدمة من ياسر",
-        450,
-        y,
-        { align: "right" }
-      )
-      .text(`رقم الحجز: ${bookingReference}`, 450, y + 20, { align: "right" });
-  }
+function finishDocument(doc) {
+  doc.end();
 }

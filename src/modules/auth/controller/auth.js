@@ -12,25 +12,23 @@ import { sendSMS } from "../../../utils/twilioService.js";
 export const register = asyncHandler(async (req, res, next) => {
   const { userName, fullName, email, password, city, country, phone } =
     req.body;
-
   const isUser = await userModel.findOne({ phone });
   const isEmail = await userModel.findOne({ email });
   if (isEmail) {
     return next(new Error("The Email has already been used!", { cause: 409 }));
   }
   if (isUser) {
-    return next(new Error("Phone already registered!", { cause: 409 }));
+    return next(new Error("phone already registered !", { cause: 409 }));
   }
-
   const countryId = await countryModel.findById(country);
   if (!countryId) {
     return next(new Error("Country Not Found!", { cause: 404 }));
   }
   const cityId = await cityModel.findById(city);
+
   if (!cityId) {
     return next(new Error("City Not Found!", { cause: 404 }));
   }
-
   const hashPassword = bcryptjs.hashSync(
     password,
     Number(process.env.SALT_ROUND)
@@ -46,24 +44,17 @@ export const register = asyncHandler(async (req, res, next) => {
     password: hashPassword,
   });
 
-  const forgetCode = randomstring.generate({
-    length: 4,
-    charset: "numeric",
+  // const code = randomstring.generate({
+  //   length: 4,
+  //   charset: "numeric",
+  // });
+  const userCode = randomstring.generate({
+    length: 15,
   });
+  user.userCode.code = userCode;
 
-  user.forgetCode = forgetCode;
-  // user.phoneWithCode = countryId.codePhone + phone.slice(1);
+  user.forgetCode = "1234";
   await user.save();
-
-  // Send OTP via Twilio
-  const message = `Your verification code is: ${forgetCode}`;
-  try {
-    await sendSMS(user.phone, message);
-  } catch (error) {
-    return next(
-      new Error("Failed to send OTP. Please try again later.", { cause: 500 })
-    );
-  }
 
   const token = jwt.sign(
     { id: user._id, email: user.email },
@@ -76,10 +67,13 @@ export const register = asyncHandler(async (req, res, next) => {
     agent: req.headers["user-agent"],
   });
 
+  user.phoneWithCode = countryId.codePhone + phone.slice(1);
+  await user.save();
+
   return res.status(200).json({
     success: true,
-    message: "Registration successful. OTP sent to your phone.",
-    data: { token },
+
+    data: { token, code: user.forgetCode },
   });
 });
 // export const activationAccount = asyncHandler(async (req, res, next) => {
@@ -232,21 +226,13 @@ export const sendForgetCode = asyncHandler(async (req, res, next) => {
     return next(new Error("Invalid phone number!", { cause: 400 }));
   }
 
-  const forgetCode = randomstring.generate({
-    length: 4,
-    charset: "numeric",
-  });
-  user.forgetCode = forgetCode;
-  await user.save();
-  const message = `Your OTP code is: ${forgetCode}`;
-  try {
-    await sendSMS(user.phone, message);
-  } catch (error) {
-    return next(
-      new Error("Failed to send OTP. Please try again later.", { cause: 500 })
-    );
-  }
+  // const code = randomstring.generate({
+  //   length: 4,
+  //   charset: "numeric",
+  // });
 
+  user.forgetCode = "1234";
+  await user.save();
   const token = jwt.sign(
     { id: user._id, email: user.email },
     process.env.TOKEN_SIGNATURE
@@ -267,21 +253,14 @@ export const sendForgetCode = asyncHandler(async (req, res, next) => {
 export const resendCode = asyncHandler(async (req, res, next) => {
   const user = await userModel.findOne({ phone: req.user.phone });
 
-  const forgetCode = randomstring.generate({
-    length: 4,
-    charset: "numeric",
-  });
+  // const code = randomstring.generate({
+  //   length: 4,
+  //   charset: "numeric",
+  // });
 
-  user.forgetCode = forgetCode;
+  user.forgetCode = "1234";
   await user.save();
-  const message = `Your OTP code is: ${forgetCode}`;
-  try {
-    await sendSMS(user.phone, message);
-  } catch (error) {
-    return next(
-      new Error("Failed to send OTP. Please try again later.", { cause: 500 })
-    );
-  }
+
   return res.status(200).json({
     success: true,
     status: 200,
@@ -367,7 +346,6 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
 
   const { userName, email, phone, city, country } = req.body;
 
-  // Check for email conflict only if the new email is different
   if (email && email !== user.email) {
     const emailExist = await userModel.findOne({ email });
     if (emailExist) {
@@ -375,7 +353,6 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Check for phone conflict only if the new phone is different
   if (phone && phone !== user.phone) {
     const phoneExist = await userModel.findOne({ phone });
     if (phoneExist) {
@@ -383,7 +360,6 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Handle country update
   if (country) {
     const countryId = await countryModel.findById(country).select("name image");
     if (!countryId) {
@@ -392,7 +368,6 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
     user.country = countryId;
   }
 
-  // Handle city update
   if (city) {
     const cityId = await cityModel.findById(city).select("name");
     if (!cityId) {
@@ -401,7 +376,6 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
     user.city = cityId;
   }
 
-  // Update other fields
   if (userName) {
     user.userName = userName;
   }
@@ -416,7 +390,6 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
     user.phoneWithCode = countryId.codePhone + phone.slice(1);
   }
 
-  // Handle file upload for profile image
   let fileData = {};
   if (req.file) {
     if (user.profileImage.id === "user_profile_q6je8x.jpg") {
@@ -448,11 +421,7 @@ export const updateProfile = asyncHandler(async (req, res, next) => {
       fieldname: req.file.fieldname || "",
     };
   }
-
-  // Save the updated user information
   await user.save();
-
-  // Return the existing token from headers
   const token = req.headers["token"];
 
   const responseData = {

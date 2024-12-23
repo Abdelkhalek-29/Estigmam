@@ -16,7 +16,6 @@ import { typesOfPlaces } from "../../typesOfPlaces/controller/typesOfPlaces.js";
 import typesOfPlacesModel from "../../../../DB/model/typesOfPlaces.model.js";
 import { updateTool } from "../../tool/controller/tool.js";
 import berthModel from "../../../../DB/model/berth.model.js";
-import { sendSMS } from "../../../utils/twilioService.js";
 
 const predefinedTypes = [
   { id: "66dcc2b4626dfd336c9d8732", name: { en: "Boats", ar: "مراكب" } },
@@ -290,21 +289,15 @@ export const sendForgetCode = asyncHandler(async (req, res, next) => {
     return next(new Error("Invalid phone number!", { cause: 400 }));
   }
 
-  const forgetCode = randomstring.generate({
+  /*const code = randomstring.generate({
     length: 4,
     charset: "numeric",
-  });
+  });*/
+  const code = "1234";
 
-  user.forgetCode = forgetCode;
+  user.forgetCode = code;
   await user.save();
-  const message = `Your OTP code is: ${forgetCode}`;
-  try {
-    await sendSMS(user.phone, message);
-  } catch (error) {
-    return next(
-      new Error("Failed to send OTP. Please try again later.", { cause: 500 })
-    );
-  }
+
   const token = jwt.sign(
     { id: user._id, phone: user.phone, role },
     process.env.TOKEN_SIGNATURE
@@ -327,21 +320,15 @@ export const sendForgetCode = asyncHandler(async (req, res, next) => {
 export const resendCode = asyncHandler(async (req, res, next) => {
   const user = await OwnerModel.findOne({ phone: req.owner.phone });
 
-  const forgetCode = randomstring.generate({
+  /*const code = randomstring.generate({
     length: 4,
     charset: "numeric",
-  });
+  });*/
+  const code = "1234";
 
-  user.forgetCode = forgetCode;
+  user.forgetCode = code;
   await user.save();
-  const message = `Your OTP code is: ${forgetCode}`;
-  try {
-    await sendSMS(user.phone, message);
-  } catch (error) {
-    return next(
-      new Error("Failed to send OTP. Please try again later.", { cause: 500 })
-    );
-  }
+
   return res.status(200).json({
     success: true,
     status: 200,
@@ -600,6 +587,7 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
   const descriptionField =
     language === "ar" ? "description_ar" : "description_en";
 
+  // Determine the filter based on whether it's a trip leader or owner
   const filter = {
     ...(req.tripLeader
       ? { tripLeaderId: req.tripLeader._id }
@@ -607,8 +595,10 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
     status: { $nin: ["pending", "rejected"] },
   };
 
+  // Log the filter for debugging
   console.log("Filter for trips:", filter);
 
+  // Fetch the trips based on the filter
   const upcomingTrips = await tripModel
     .find(filter)
     .populate({
@@ -638,10 +628,14 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
     })
     .sort({ startDate: -1 });
 
+  // Log the retrieved trips for debugging
+  console.log("Retrieved Trips:", upcomingTrips);
+
   const transformedTrips = upcomingTrips.map((trip) => {
     const { typeOfPlace, category, addition, bedType, tripLeaderId } =
       trip.toObject();
 
+    // Prepare tripLeader details
     const tripLeaderDetails = tripLeaderId
       ? {
           name: tripLeaderId.name,
@@ -651,6 +645,7 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
           _id: tripLeaderId._id,
         }
       : {
+          // Use owner's information if no valid trip leader is found
           name: req.owner.fullName,
           profileImage: req.owner.profileImage || null,
           tripsCounter: req.owner.tripsCounter || 0,
@@ -693,6 +688,7 @@ export const lastTrips = asyncHandler(async (req, res, next) => {
     };
   });
 
+  // Return the transformed trips
   res.status(200).json({
     success: true,
     data: transformedTrips,

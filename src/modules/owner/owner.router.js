@@ -10,7 +10,7 @@ router.get("/logout", (req, res, next) => {
   req.logout();
   res.redirect("/");
 });
-router.patch("/changePassword",auth,ownerController.changePassword)
+router.patch("/changePassword", auth, ownerController.changePassword);
 
 router.post(
   "/register",
@@ -95,7 +95,7 @@ router.post(
 );
 
 router.get("/codeShare", auth, ownerController.getOwnerCode);
-router.patch("/register-agreement",auth, ownerController.registerAgreement)
-router.get("/myProfile",auth,ownerController.myProfile)
-router.get("/trip/:tripId",auth,ownerController.getSingleTrip)
+router.patch("/register-agreement", auth, ownerController.registerAgreement);
+router.get("/myProfile", auth, ownerController.myProfile);
+router.get("/trip/:tripId", auth, ownerController.getSingleTrip);
 export default router;

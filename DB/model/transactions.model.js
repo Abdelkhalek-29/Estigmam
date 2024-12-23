@@ -15,7 +15,7 @@ const transactionSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["placed", "Payed", "failed"],
+      enum: ["placed", "Paid", "failed"],
       default: "placed",
     },
     orderId: {
@@ -27,7 +27,6 @@ const transactionSchema = new Schema(
     tripId: { type: Types.ObjectId },
     reason: { type: String },
     date: { type: Date, default: Date.now },
-    transactionId: { type: Number },
   },
   { timestamps: true }
 );

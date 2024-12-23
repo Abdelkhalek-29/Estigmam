@@ -22,17 +22,22 @@ import conversationModel from "../../../../DB/model/conversation.model.js";
 import GroupChat from "../../../../DB/model/groupChat,model.js";
 import berthModel from "../../../../DB/model/berth.model.js";
 import { getRandomLocationInCircle } from "../../../utils/RandomLocation.js";
-import { InvoiceService } from "../../../utils/invoiceService.js";
+import { createInvoice } from "../../../utils/invoiceService.js";
 import crypto from "crypto";
 import dotenv from "dotenv";
 dotenv.config();
-
+import { fileURLToPath } from "url";
+import path from "path";
+import fs from "fs";
 import {
   initiateApplePayPaymentService,
   initiateCardPaymentService,
   initiateGooglePayPaymentService,
   initiatePayPalPaymentService,
 } from "../../../utils/payment.js";
+import transactionModel from "../../../../DB/model/transactions.model.js";
+import invoceModel from "../../../../DB/model/invoice.model.js";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const createTrip = asyncHandler(async (req, res) => {
   const {
@@ -337,7 +342,7 @@ export const BookedTrip = asyncHandler(async (req, res, next) => {
     amount: totalCost,
     type: "Trip",
     method: paymentType,
-    status: "Payed",
+    status: "Paid",
     numberOfTickets: BookedTicket,
     tripId: trip._id,
     reason: trip.tripTitle,
@@ -487,6 +492,33 @@ async function updateOrderStatus(transactionsModel, orderId, status) {
     throw error;
   }
 }
+export const getInvoiceByTransactionId = asyncHandler(
+  async (req, res, next) => {
+    const { transactionId } = req.params;
+    const transaction = await transactionsModel.findById(transactionId);
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: "Transaction not found",
+      });
+    }
+    if (!transaction.invoice || !transaction.invoice.url) {
+      return res.status(404).json({
+        success: false,
+        message: "Invoice not found for this transaction",
+      });
+    }
+
+    // Return the invoice details
+    res.status(200).json({
+      success: true,
+      invoice: {
+        url: transaction.invoice.url,
+        id: transaction.invoice.id,
+      },
+    });
+  }
+);
 
 export const deleteTrip = asyncHandler(async (req, res, next) => {
   const ownerId = req.owner?._id;
