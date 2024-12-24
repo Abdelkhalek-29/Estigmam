@@ -58,8 +58,7 @@ router.put(
   tripController.BookedTrip
 );
 router.post("/webhock", tripController.handleWebhook);
-router.get("/invoice/:transactionId", tripController.getInvoiceByTransactionId);
-
+router.get("/invoice/:invoiceId", tripController.getInvoice);
 router.get(
   "/getTripByOffer/:categoryId",
   validation(validators.categoryId),

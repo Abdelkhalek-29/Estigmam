@@ -3,21 +3,16 @@ import PDFDocument from "pdfkit";
 import path from "path";
 
 export function createInvoice(invoice, pathToSave) {
-  try {
-    validateInput(invoice);
-    const doc = new PDFDocument({
-      size: "A4",
-      margin: 50,
-      bufferPages: true,
-    });
+  validateInput(invoice);
+  const doc = new PDFDocument({
+    size: "A4",
+    margin: 50,
+    bufferPages: true,
+  });
 
-    setupDocument(doc, pathToSave);
-    addContent(doc, invoice);
-    finishDocument(doc);
-  } catch (err) {
-    console.error("Error generating invoice:", err);
-    throw new Error(`Invoice generation failed: ${err.message}`);
-  }
+  setupDocument(doc, pathToSave);
+  addContent(doc, invoice);
+  finishDocument(doc);
 }
 
 function validateInput(invoice) {
@@ -50,13 +45,11 @@ function addContent(doc, invoice) {
   addHeaderText(doc, invoice);
   addDividerLine(doc, 120);
 
-  // Main content
   const startY = 140;
   addSummaryBox(doc, invoice, startY);
   addTripDetails(doc, invoice, startY + 180);
-  addPaymentInfo(doc, startY + 350);
+  addPaymentInfo(doc, invoice, startY + 350);
 
-  // Footer
   addFooter(doc);
 }
 
@@ -89,48 +82,50 @@ function addDividerLine(doc, y) {
 }
 
 function addSummaryBox(doc, invoice, y) {
-  try {
-    doc
-      .roundedRect(50, y, 500, 160, 10)
-      .fillColor("#f8fafc")
-      .fill()
-      .fillColor("#000000");
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(14)
-      .text("Here is your trip receipt", 70, y + 20)
-      .font("Helvetica")
-      .fontSize(12)
-      .text("We hope you enjoyed your trip", 70, y + 45)
-      .text(`Guests: ${invoice.numberOfPeople}`, 70, y + 65)
-      .text(
-        `Price per Guest: SAR ${invoice.pricePerPerson?.toFixed(2) || 0}`,
-        70,
-        y + 85
-      )
-      .text(`Discount: %${invoice.discount?.toFixed(2) || 0}`, 70, y + 105);
-    const totalAmount = parseFloat(invoice.total);
-    if (isNaN(totalAmount)) {
-      console.error("Invalid total:", invoice.total);
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(16)
-        .fillColor("red")
-        .text("Error: Invalid Total Amount", 70, y + 120);
-    } else {
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(16)
-        .fillColor("#2563eb")
-        .text("Total Amount:", 70, y + 120)
-        .text(`SAR ${totalAmount.toFixed(2)}`, 500, y + 120, {
-          align: "right",
-        });
-    }
-  } catch (error) {
-    console.error("Error adding summary box:", error.message);
-    throw error;
-  }
+  doc
+    .roundedRect(50, y, 500, 160, 10)
+    .fillColor("#f8fafc")
+    .fill()
+    .fillColor("#000000");
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(14)
+    .text("Here is your trip receipt", 70, y + 20)
+    .font("Helvetica")
+    .fontSize(12)
+    .text("We hope you enjoyed your trip", 70, y + 45)
+    .text(`Guests: ${invoice.numberOfPeople}`, 70, y + 65);
+
+  const pricePerPerson = parseFloat(invoice.pricePerPerson);
+  doc.text(
+    `Price per Guest: SAR ${
+      isNaN(pricePerPerson) ? "Invalid" : pricePerPerson.toFixed(2)
+    }`,
+    70,
+    y + 85
+  );
+
+  const discount = parseFloat(invoice.discount);
+  doc.text(
+    `Discount: %${isNaN(discount) ? 0 : discount.toFixed(2)}`,
+    70,
+    y + 105
+  );
+
+  const totalAmount = parseFloat(invoice.total);
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(16)
+    .fillColor(totalAmount > 0 ? "#2563eb" : "red")
+    .text("Total Amount:", 70, y + 120)
+    .text(
+      `SAR ${isNaN(totalAmount) ? "Invalid" : totalAmount.toFixed(2)}`,
+      500,
+      y + 120,
+      {
+        align: "right",
+      }
+    );
 }
 
 function addTripDetails(doc, invoice, y) {
@@ -146,7 +141,6 @@ function addTripDetails(doc, invoice, y) {
       align: "justify",
       lineGap: 5,
     })
-
     .text(
       `Trip Duration: ${invoice.tripDuration || "Not available"}`,
       70,
@@ -159,14 +153,14 @@ function addTripDetails(doc, invoice, y) {
     );
 }
 
-function addPaymentInfo(doc, y) {
+function addPaymentInfo(doc, invoice, y) {
   doc
     .font("Helvetica-Bold")
     .fontSize(14)
     .text("Payment Information", 70, y)
     .font("Helvetica")
     .fontSize(12)
-    .text(`Method:${invoice.method || "Not available"}`, 70, y + 25)
+    .text(`Method: ${invoice.method || "Not available"}`, 70, y + 25)
     .text("Status: Paid", 70, y + 45)
     .text(`Date: ${new Date().toLocaleDateString()}`, 70, y + 65);
 }
@@ -175,14 +169,12 @@ function addFooter(doc) {
   const pages = doc.bufferedPageRange().count;
   for (let i = 0; i < pages; i++) {
     doc.switchToPage(i);
-
     doc
       .moveTo(50, 750)
       .lineTo(550, 750)
       .strokeColor("#e2e8f0")
       .lineWidth(1)
       .stroke();
-
     doc
       .fillColor("#64748b")
       .fontSize(10)
