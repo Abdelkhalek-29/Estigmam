@@ -372,6 +372,26 @@ export const BookedTrip = asyncHandler(async (req, res) => {
       const invoiceDate = await invoceModel.create(invoice);
 
       await fs.promises.unlink(invoicePath);
+      let chatGroup = await GroupChat.findOne({ tripId });
+      if (!chatGroup) {
+        chatGroup = await GroupChat.create({
+          tripId,
+          groupName: `${trip.tripTitle} Chat`,
+          participants: [userId],
+          lastMessage: {
+            text: "Welcome to the trip!",
+            senderId: userId,
+            seen: false,
+          },
+        });
+      } else if (
+        !chatGroup.participants.some(
+          (participant) => participant.toString() === userId.toString()
+        )
+      ) {
+        chatGroup.participants.push(userId);
+        await chatGroup.save();
+      }
       return res.status(200).json({
         success: true,
         message: "The trip has been booked successfully",
