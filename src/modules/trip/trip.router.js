@@ -60,24 +60,28 @@ router.put(
   validation(validators.bookeTicket),
   tripController.BookedTrip
 );
-router.post(
-  "/webhock",
-  bodyParser.raw({ type: "application/json" }),
-  async (req, res, next) => {
-    try {
-      const rawBody = req.body.toString("utf8"); // Convert Buffer to string
-      console.log("Raw Body:", rawBody);
-
-      req.rawBody = rawBody; // Add rawBody to the request for controller usage
-
-      // Call the controller
-      await tripController.handleWebhook(req, res, next);
-    } catch (error) {
-      console.error("Error processing raw body:", error);
-      res.status(500).send("Internal server error");
+router.post("/webhock", rawBodyMiddleware, async (req, res, next) => {
+  try {
+    const signature = req.headers["x-signature"]; // Replace with actual header name.
+    if (!signature) {
+      console.error("Missing signature in headers");
+      return res.status(400).send("Signature header is missing");
     }
+
+    const rawBody = req.body.toString("utf8");
+    req.rawBody = rawBody;
+
+    // Log for debugging
+    console.log("Headers:", req.headers);
+    console.log("Raw Body:", rawBody);
+
+    // Call your controller with verified raw body and signature
+    await tripController.handleWebhook(req, res, next);
+  } catch (error) {
+    console.error("Error processing webhook:", error);
+    res.status(500).send("Internal server error");
   }
-);
+});
 
 router.get("/invoice/:invoiceId", tripController.getInvoice);
 router.get(

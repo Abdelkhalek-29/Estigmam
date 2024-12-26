@@ -29,6 +29,7 @@ import cors from "cors";
 const initApp = (app, express) => {
   app.use(cors());
   //convert Buffer Data
+  app.use(express.json());
 
   //Setup API Routing
   app.use(`/auth`, authRouter);
@@ -39,7 +40,6 @@ const initApp = (app, express) => {
   app.use(`/tool`, toolRouter);
   app.use(`/typesOfPlaces`, typesOfPlacesRouter);
   app.use(`/trip`, tripRouter);
-  app.use(express.json());
   app.use(`/cityAndCountry`, cityAndCountryRouter);
   app.use("/payment", paymentRouter);
   // app.use(`/customizeTrip`, customizeTripRouter);
