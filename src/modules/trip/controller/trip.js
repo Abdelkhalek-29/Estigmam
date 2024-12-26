@@ -420,14 +420,14 @@ export const handleWebhook = async (req, res, next) => {
     const parsedBody = JSON.parse(rawBody);
     console.log("Parsed Webhook Body:", parsedBody);
 
-    const signature = req.headers["x-signature"];
+    const { signature, ...payload } = parsedBody; // Extract signature from the body
     if (!signature) {
-      console.error("Missing signature in headers");
+      console.error("Missing signature in payload");
       return res.status(400).send("Missing signature");
     }
 
     // Validate the webhook signature
-    if (!isValidSignature(parsedBody, process.env.NOON_SECRET_KEY, signature)) {
+    if (!isValidSignature(payload, process.env.NOON_SECRET_KEY, signature)) {
       console.error("Invalid signature");
       return res.status(400).send("Invalid signature");
     }
@@ -454,6 +454,29 @@ export const handleWebhook = async (req, res, next) => {
     return res.status(400).send("Invalid webhook payload");
   }
 };
+
+// Helper Function for Validating Signature
+function isValidSignature(payload, secretKey, receivedSignature) {
+  const dataString = createDataString(payload);
+  const calculatedSignature = calculateSignature(dataString, secretKey);
+
+  if (!receivedSignature) {
+    console.error("Missing received signature");
+    return false;
+  }
+
+  if (calculatedSignature !== receivedSignature) {
+    console.error(
+      "Signature mismatch. Expected:",
+      calculatedSignature,
+      "Received:",
+      receivedSignature
+    );
+    return false;
+  }
+
+  return true;
+}
 
 // Helper Functions
 function createDataString(payload) {
@@ -482,28 +505,6 @@ function calculateSignature(dataString, secretKey) {
   console.log("Generated Signature:", signature);
 
   return signature;
-}
-
-function isValidSignature(payload, secretKey, receivedSignature) {
-  const dataString = createDataString(payload);
-  const calculatedSignature = calculateSignature(dataString, secretKey);
-
-  if (!receivedSignature) {
-    console.error("Missing received signature");
-    return false;
-  }
-
-  if (calculatedSignature !== receivedSignature) {
-    console.error(
-      "Signature mismatch. Expected:",
-      calculatedSignature,
-      "Received:",
-      receivedSignature
-    );
-    return false;
-  }
-
-  return true;
 }
 
 async function updateOrderStatus(transactionsModel, orderId, status) {
