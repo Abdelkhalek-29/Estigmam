@@ -411,16 +411,16 @@ export const BookedTrip = asyncHandler(async (req, res) => {
 
 export const handleWebhook = async (req, res, next) => {
   try {
-    const rawBody = req.rawBody;
+    const rawBody = req.rawBody; // Use rawBody directly
     if (!rawBody) {
       console.error("Missing raw body");
       return res.status(400).send("Missing raw body");
     }
 
-    const parsedBody = JSON.parse(rawBody);
+    const parsedBody = JSON.parse(rawBody); // Parse rawBody here
     console.log("Parsed Webhook Body:", parsedBody);
 
-    const { signature, ...payload } = parsedBody; // Extract signature from the body
+    const { signature, ...payload } = parsedBody; // Extract signature
     if (!signature) {
       console.error("Missing signature in payload");
       return res.status(400).send("Missing signature");
@@ -434,7 +434,7 @@ export const handleWebhook = async (req, res, next) => {
 
     console.log("Valid Webhook Event:", parsedBody);
 
-    // Handle the event logic
+    // Process the webhook event
     const { orderStatus, orderId } = parsedBody;
     switch (orderStatus) {
       case "AUTHORIZED":
@@ -453,6 +453,15 @@ export const handleWebhook = async (req, res, next) => {
     console.error("Error in webhook handler:", error);
     return res.status(400).send("Invalid webhook payload");
   }
+};
+const rawBodyMiddleware = (req, res, next) => {
+  req.rawBody = "";
+  req.on("data", (chunk) => {
+    req.rawBody += chunk;
+  });
+  req.on("end", () => {
+    next();
+  });
 };
 
 // Helper Function for Validating Signature
