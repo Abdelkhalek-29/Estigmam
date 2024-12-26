@@ -457,17 +457,16 @@ export const handleWebhook = async (req, res, next) => {
 
 function createDataString(payload) {
   const fields = [
-    payload.orderId,
-    payload.orderStatus,
-    payload.eventId,
-    payload.eventType,
-    payload.timeStamp,
-    payload.originalOrderId || "", // Default to empty string if undefined
+    payload.orderId || "",
+    payload.orderStatus || "",
+    payload.eventId || "",
+    payload.eventType || "",
+    payload.timeStamp || "",
+    payload.originalOrderId || "",
     payload.merchantOrderReference || "",
     payload.attemptNumber || "",
   ];
-
-  return fields.join(","); // Use a consistent delimiter if required by Noon
+  return fields.join(","); // Replace `,` with the required delimiter if needed
 }
 
 function calculateSignature(dataString, secretKey) {
@@ -484,19 +483,30 @@ function calculateSignature(dataString, secretKey) {
 
 function isValidSignature(payload, secretKey, receivedSignature) {
   const dataString = createDataString(payload);
-  console.log("Data String for Validation:", dataString);
-
   const calculatedSignature = calculateSignature(dataString, secretKey);
-  console.log("Calculated Signature:", calculatedSignature);
-  console.log("Received Signature:", receivedSignature);
 
-  return calculatedSignature === receivedSignature;
+  if (!receivedSignature) {
+    console.error("Missing received signature");
+    return false;
+  }
+
+  if (calculatedSignature !== receivedSignature) {
+    console.error(
+      "Signature mismatch. Expected:",
+      calculatedSignature,
+      "Received:",
+      receivedSignature
+    );
+    return false;
+  }
+
+  return true;
 }
 
 async function updateOrderStatus(transactionsModel, orderId, status) {
   try {
     const result = await transactionsModel.findOneAndUpdate(
-      { _id: orderId },
+      { orderId }, // Use `orderId` as the lookup field instead of `_id`
       { status },
       { new: true } // Return the updated document
     );
