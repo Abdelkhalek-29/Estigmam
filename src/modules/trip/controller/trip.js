@@ -410,7 +410,8 @@ export const BookedTrip = asyncHandler(async (req, res) => {
 });
 
 export const handleWebhook = async (req, res, next) => {
-  const eventData = req.body;
+  const rawBody = req.rawBody; // Use the raw body
+  const eventData = JSON.parse(rawBody); // Parse the raw body into JSON
   const signature =
     req.headers["x-signature"] ||
     req.headers["X-Signature"] ||
@@ -466,10 +467,8 @@ function createDataString(payload) {
     payload.merchantOrderReference || "",
     payload.attemptNumber || "",
   ];
-
-  const dataString = fields.join(","); // Use the required delimiter here
-  console.log("Data String for Signature:", dataString);
-
+  const dataString = fields.join(",");
+  console.log("Constructed Data String:", dataString);
   return dataString;
 }
 
