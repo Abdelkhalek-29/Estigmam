@@ -410,49 +410,48 @@ export const BookedTrip = asyncHandler(async (req, res) => {
 });
 
 export const handleWebhook = async (req, res, next) => {
-  const rawBody = req.rawBody; // Use the raw body
-  const eventData = JSON.parse(rawBody); // Parse the raw body into JSON
-  const signature =
-    req.headers["x-signature"] ||
-    req.headers["X-Signature"] ||
-    eventData.signature;
-
-  console.log("Headers:", req.headers);
-  console.log("Received Event Data:", eventData);
-  console.log("Received Signature:", signature);
-
   try {
-    if (!signature) {
-      console.error("No signature found in headers or body");
-      return res.status(400).send("No signature provided");
+    const rawBody = req.rawBody; // Use rawBody from the request
+    if (!rawBody) {
+      console.error("Missing raw body");
+      return res.status(400).send("Missing raw body");
     }
 
-    if (!isValidSignature(eventData, process.env.NOON_SECRET_KEY, signature)) {
-      console.error("Signature validation failed");
+    const parsedBody = JSON.parse(rawBody); // Parse JSON
+    console.log("Parsed Webhook Body:", parsedBody);
+
+    const signature = req.headers["x-signature"];
+    if (!signature) {
+      console.error("Missing signature in headers");
+      return res.status(400).send("Missing signature");
+    }
+
+    // Validate and process the webhook payload
+    if (!isValidSignature(parsedBody, process.env.NOON_SECRET_KEY, signature)) {
+      console.error("Invalid signature");
       return res.status(400).send("Invalid signature");
     }
 
-    console.log("Signature validation succeeded");
+    console.log("Valid Webhook Event:", parsedBody);
 
-    const { orderStatus, orderId } = eventData;
+    // Handle event logic
+    const { orderStatus, orderId } = parsedBody;
     switch (orderStatus) {
       case "AUTHORIZED":
       case "AUTHENTICATED":
         await updateOrderStatus(transactionsModel, orderId, "paid");
         break;
-
       case "FAILED":
         await updateOrderStatus(transactionsModel, orderId, "failed");
         break;
-
       default:
-        console.log(`Unhandled order status: ${orderStatus}`);
+        console.warn(`Unhandled order status: ${orderStatus}`);
     }
 
     return res.status(200).send("Webhook processed successfully");
   } catch (error) {
-    console.error("Webhook processing error:", error);
-    return res.status(500).send("Internal server error");
+    console.error("Error in webhook handler:", error);
+    return res.status(400).send("Invalid webhook payload");
   }
 };
 

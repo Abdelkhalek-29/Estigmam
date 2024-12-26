@@ -60,22 +60,25 @@ router.put(
   validation(validators.bookeTicket),
   tripController.BookedTrip
 );
-router.post("/webhock", rawBodyMiddleware, async (req, res, next) => {
-  try {
-    // Convert raw buffer to string and parse it manually if needed
-    const rawBody = req.body.toString("utf8");
-    req.rawBody = rawBody;
+router.post(
+  "/webhock",
+  bodyParser.raw({ type: "application/json" }),
+  async (req, res, next) => {
+    try {
+      const rawBody = req.body.toString("utf8"); // Convert Buffer to string
+      console.log("Raw Body:", rawBody);
 
-    // Log raw body for debugging
-    console.log("Raw Body:", rawBody);
+      req.rawBody = rawBody; // Add rawBody to the request for controller usage
 
-    // Add the raw body to the controller function
-    await tripController.handleWebhook(req, res, next);
-  } catch (error) {
-    console.error("Error processing raw body:", error);
-    res.status(500).send("Internal server error");
+      // Call the controller
+      await tripController.handleWebhook(req, res, next);
+    } catch (error) {
+      console.error("Error processing raw body:", error);
+      res.status(500).send("Internal server error");
+    }
   }
-});
+);
+
 router.get("/invoice/:invoiceId", tripController.getInvoice);
 router.get(
   "/getTripByOffer/:categoryId",
