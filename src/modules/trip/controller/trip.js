@@ -466,11 +466,15 @@ function createDataString(payload) {
     payload.merchantOrderReference || "",
     payload.attemptNumber || "",
   ];
-  return fields.join(","); // Replace `,` with the required delimiter if needed
+
+  const dataString = fields.join(","); // Use the required delimiter here
+  console.log("Data String for Signature:", dataString);
+
+  return dataString;
 }
 
 function calculateSignature(dataString, secretKey) {
-  console.log("Data String (pre-HMAC):", dataString);
+  console.log("Data String (before HMAC):", dataString);
 
   const hmac = crypto.createHmac("sha512", secretKey);
   hmac.update(dataString, "utf8");
