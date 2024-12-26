@@ -58,7 +58,7 @@ router.put(
   validation(validators.bookeTicket),
   tripController.BookedTrip
 );
-router.post("/webhook", rawBodyMiddleware, async (req, res, next) => {
+router.post("/webhock", rawBodyMiddleware, async (req, res, next) => {
   try {
     // Pass the raw body to the controller
     await tripController.handleWebhook(req, res, next);
