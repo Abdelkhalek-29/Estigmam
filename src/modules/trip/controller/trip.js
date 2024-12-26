@@ -409,42 +409,49 @@ export const BookedTrip = asyncHandler(async (req, res) => {
   }, 1000);
 });
 
-export const handleWebhook = async (req, res) => {
+const handleWebhook = async (req, res, next) => {
   try {
-    // Parse the raw body
-    const parsedBody = JSON.parse(req.rawBody); // Ensure rawBody contains valid JSON
+    const rawBody = req.body.toString("utf8");
+    const signature = req.headers["x-signature"]; // Replace with the actual header name for the signature
 
-    console.log("Parsed Webhook Body:", parsedBody);
-
-    // Extract data and handle logic
-    const { signature, orderStatus, orderId } = parsedBody;
-
-    if (!signature) {
-      return res.status(400).send("Missing signature");
-    }
-
-    // Validate signature
-    if (!isValidSignature(parsedBody, process.env.SECRET_KEY, signature)) {
+    // Validate the signature
+    const isValid = validateSignature(rawBody, signature);
+    if (!isValid) {
       return res.status(400).send("Invalid signature");
     }
 
-    // Process order status
-    switch (orderStatus) {
+    // Parse the JSON body
+    const event = JSON.parse(rawBody);
+
+    // Process the event
+    // For example, handle different event types
+    switch (event.eventType) {
       case "AUTHORIZED":
-        await updateOrderStatus(orderId, "paid");
+        console.log("Order AUTHORIZED");
         break;
       case "FAILED":
-        await updateOrderStatus(orderId, "failed");
+        console.log("Order FAILED");
         break;
+      // Add more cases as needed
       default:
-        console.warn(`Unhandled order status: ${orderStatus}`);
+        console.log("Unhandled event type:", event.eventType);
     }
 
-    res.status(200).send("Webhook processed successfully");
+    res.status(200).send("Webhook received");
   } catch (error) {
-    console.error("Error in webhook handler:", error);
-    res.status(400).send("Invalid webhook payload");
+    console.error("Error handling webhook:", error);
+    res.status(500).send("Internal server error");
   }
+};
+
+// Function to validate the signature
+const validateSignature = (rawBody, signature) => {
+  const secret = "your_secret_key"; // Replace with your actual secret key
+  const hash = crypto
+    .createHmac("sha256", secret)
+    .update(rawBody)
+    .digest("hex");
+  return hash === signature;
 };
 
 // Helper Function for Validating Signature

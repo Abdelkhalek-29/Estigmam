@@ -5,9 +5,7 @@ import auth from "../../middleware/auth.js";
 import { validation } from "../../middleware/validation.js";
 import { isAuthorized } from "../../middleware/authorization.middleware.js";
 import optionalAuth from "../../middleware/optionalAuth.js";
-import bodyParser from "body-parser";
-const rawBodyMiddleware = bodyParser.raw({ type: "*/*" });
-
+import { rawBodyMiddleware } from "../../middleware/rawBodyMiddleware.js";
 const router = Router({ mergeParams: true });
 
 router.post(
@@ -60,16 +58,13 @@ router.put(
   validation(validators.bookeTicket),
   tripController.BookedTrip
 );
-router.post("/webhock", rawBodyMiddleware, async (req, res, next) => {
+router.post("/webhook", rawBodyMiddleware, async (req, res, next) => {
   try {
-    // Debugging logs
-    console.log("Headers:", req.headers);
-    console.log("Raw Body:", req.rawBody); // Captured by rawBodyMiddleware
-
+    // Pass the raw body to the controller
     await tripController.handleWebhook(req, res, next);
   } catch (error) {
     console.error("Error processing webhook:", error);
-    return res.status(500).send("Internal server error");
+    res.status(500).send("Internal server error");
   }
 });
 
