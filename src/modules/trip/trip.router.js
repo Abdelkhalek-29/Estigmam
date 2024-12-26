@@ -60,7 +60,7 @@ router.put(
   validation(validators.bookeTicket),
   tripController.BookedTrip
 );
-router.post("/webhook", rawBodyMiddleware, async (req, res, next) => {
+router.post("/webhock", rawBodyMiddleware, async (req, res, next) => {
   try {
     const rawBody = req.body.toString("utf8");
     req.rawBody = rawBody;
