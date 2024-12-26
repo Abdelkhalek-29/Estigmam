@@ -60,9 +60,9 @@ router.put(
   validation(validators.bookeTicket),
   tripController.BookedTrip
 );
-router.post("/webhock", rawBodyMiddleware, async (req, res, next) => {
+router.post("/webhook", rawBodyMiddleware, async (req, res, next) => {
   try {
-    const signature = req.headers["x-signature"]; // Replace with actual header name.
+    const signature = req.headers["x-signature"];
     if (!signature) {
       console.error("Missing signature in headers");
       return res.status(400).send("Signature header is missing");
@@ -71,15 +71,15 @@ router.post("/webhock", rawBodyMiddleware, async (req, res, next) => {
     const rawBody = req.body.toString("utf8");
     req.rawBody = rawBody;
 
-    // Log for debugging
+    // Debugging logs
     console.log("Headers:", req.headers);
     console.log("Raw Body:", rawBody);
 
-    // Call your controller with verified raw body and signature
+    // Call the webhook handler in the controller
     await tripController.handleWebhook(req, res, next);
   } catch (error) {
     console.error("Error processing webhook:", error);
-    res.status(500).send("Internal server error");
+    return res.status(500).send("Internal server error");
   }
 });
 

@@ -411,13 +411,13 @@ export const BookedTrip = asyncHandler(async (req, res) => {
 
 export const handleWebhook = async (req, res, next) => {
   try {
-    const rawBody = req.rawBody; // Use rawBody from the request
+    const rawBody = req.rawBody;
     if (!rawBody) {
       console.error("Missing raw body");
       return res.status(400).send("Missing raw body");
     }
 
-    const parsedBody = JSON.parse(rawBody); // Parse JSON
+    const parsedBody = JSON.parse(rawBody);
     console.log("Parsed Webhook Body:", parsedBody);
 
     const signature = req.headers["x-signature"];
@@ -426,7 +426,7 @@ export const handleWebhook = async (req, res, next) => {
       return res.status(400).send("Missing signature");
     }
 
-    // Validate and process the webhook payload
+    // Validate the webhook signature
     if (!isValidSignature(parsedBody, process.env.NOON_SECRET_KEY, signature)) {
       console.error("Invalid signature");
       return res.status(400).send("Invalid signature");
@@ -434,7 +434,7 @@ export const handleWebhook = async (req, res, next) => {
 
     console.log("Valid Webhook Event:", parsedBody);
 
-    // Handle event logic
+    // Handle the event logic
     const { orderStatus, orderId } = parsedBody;
     switch (orderStatus) {
       case "AUTHORIZED":
@@ -455,6 +455,7 @@ export const handleWebhook = async (req, res, next) => {
   }
 };
 
+// Helper Functions
 function createDataString(payload) {
   const fields = [
     payload.orderId || "",
@@ -508,7 +509,7 @@ function isValidSignature(payload, secretKey, receivedSignature) {
 async function updateOrderStatus(transactionsModel, orderId, status) {
   try {
     const result = await transactionsModel.findOneAndUpdate(
-      { orderId }, // Use `orderId` as the lookup field instead of `_id`
+      { orderId }, // Use `orderId` as the lookup field
       { status },
       { new: true } // Return the updated document
     );
