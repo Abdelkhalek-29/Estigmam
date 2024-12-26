@@ -409,59 +409,42 @@ export const BookedTrip = asyncHandler(async (req, res) => {
   }, 1000);
 });
 
-export const handleWebhook = async (req, res, next) => {
+export const handleWebhook = async (req, res) => {
   try {
-    const rawBody = req.rawBody; // Use rawBody directly
-    if (!rawBody) {
-      console.error("Missing raw body");
-      return res.status(400).send("Missing raw body");
-    }
+    // Parse the raw body
+    const parsedBody = JSON.parse(req.rawBody); // Ensure rawBody contains valid JSON
 
-    const parsedBody = JSON.parse(rawBody); // Parse rawBody here
     console.log("Parsed Webhook Body:", parsedBody);
 
-    const { signature, ...payload } = parsedBody; // Extract signature
+    // Extract data and handle logic
+    const { signature, orderStatus, orderId } = parsedBody;
+
     if (!signature) {
-      console.error("Missing signature in payload");
       return res.status(400).send("Missing signature");
     }
 
-    // Validate the webhook signature
-    if (!isValidSignature(payload, process.env.NOON_SECRET_KEY, signature)) {
-      console.error("Invalid signature");
+    // Validate signature
+    if (!isValidSignature(parsedBody, process.env.SECRET_KEY, signature)) {
       return res.status(400).send("Invalid signature");
     }
 
-    console.log("Valid Webhook Event:", parsedBody);
-
-    // Process the webhook event
-    const { orderStatus, orderId } = parsedBody;
+    // Process order status
     switch (orderStatus) {
       case "AUTHORIZED":
-      case "AUTHENTICATED":
-        await updateOrderStatus(transactionsModel, orderId, "paid");
+        await updateOrderStatus(orderId, "paid");
         break;
       case "FAILED":
-        await updateOrderStatus(transactionsModel, orderId, "failed");
+        await updateOrderStatus(orderId, "failed");
         break;
       default:
         console.warn(`Unhandled order status: ${orderStatus}`);
     }
 
-    return res.status(200).send("Webhook processed successfully");
+    res.status(200).send("Webhook processed successfully");
   } catch (error) {
     console.error("Error in webhook handler:", error);
-    return res.status(400).send("Invalid webhook payload");
+    res.status(400).send("Invalid webhook payload");
   }
-};
-const rawBodyMiddleware = (req, res, next) => {
-  req.rawBody = "";
-  req.on("data", (chunk) => {
-    req.rawBody += chunk;
-  });
-  req.on("end", () => {
-    next();
-  });
 };
 
 // Helper Function for Validating Signature

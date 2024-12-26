@@ -5,6 +5,7 @@ import auth from "../../middleware/auth.js";
 import { validation } from "../../middleware/validation.js";
 import { isAuthorized } from "../../middleware/authorization.middleware.js";
 import optionalAuth from "../../middleware/optionalAuth.js";
+import rawBodyMiddleware from "../../middleware/bodyrow.js";
 import bodyParser from "body-parser";
 const rawBodyMiddleware = bodyParser.raw({ type: "*/*" });
 
@@ -62,14 +63,10 @@ router.put(
 );
 router.post("/webhock", rawBodyMiddleware, async (req, res, next) => {
   try {
-    const rawBody = req.body.toString("utf8");
-    req.rawBody = rawBody;
-
     // Debugging logs
     console.log("Headers:", req.headers);
-    console.log("Raw Body:", rawBody);
+    console.log("Raw Body:", req.rawBody); // Captured by rawBodyMiddleware
 
-    // Call the webhook handler in the controller
     await tripController.handleWebhook(req, res, next);
   } catch (error) {
     console.error("Error processing webhook:", error);
