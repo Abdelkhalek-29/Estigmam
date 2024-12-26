@@ -5,7 +5,6 @@ import auth from "../../middleware/auth.js";
 import { validation } from "../../middleware/validation.js";
 import { isAuthorized } from "../../middleware/authorization.middleware.js";
 import optionalAuth from "../../middleware/optionalAuth.js";
-import rawBodyMiddleware from "../../middleware/bodyrow.js";
 import bodyParser from "body-parser";
 const rawBodyMiddleware = bodyParser.raw({ type: "*/*" });
 
