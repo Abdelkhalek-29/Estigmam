@@ -409,7 +409,7 @@ export const BookedTrip = asyncHandler(async (req, res) => {
   }, 1000);
 });
 
-const handleWebhook = async (req, res, next) => {
+export const handleWebhook = async (req, res, next) => {
   try {
     const rawBody = req.body.toString("utf8");
     const signature = req.headers["x-signature"]; // Replace with the actual header name for the signature
