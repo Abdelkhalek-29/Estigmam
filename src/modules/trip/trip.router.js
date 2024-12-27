@@ -5,7 +5,7 @@ import auth from "../../middleware/auth.js";
 import { validation } from "../../middleware/validation.js";
 import { isAuthorized } from "../../middleware/authorization.middleware.js";
 import optionalAuth from "../../middleware/optionalAuth.js";
-import { rawBodyMiddleware } from "../../middleware/rawBodyMiddleware.js";
+import { webhookMiddleware } from "../../middleware/rawBodyMiddleware.js";
 const router = Router({ mergeParams: true });
 
 router.post(
@@ -58,7 +58,7 @@ router.put(
   validation(validators.bookeTicket),
   tripController.BookedTrip
 );
-router.post("/webhock", rawBodyMiddleware, tripController.handleWebhook);
+router.post("/webhock", webhookMiddleware, tripController.handleWebhook);
 
 router.get("/invoice/:invoiceId", tripController.getInvoice);
 router.get(

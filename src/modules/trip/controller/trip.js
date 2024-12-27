@@ -409,25 +409,15 @@ export const BookedTrip = asyncHandler(async (req, res) => {
   }, 1000);
 });
 
-const verifyNoonSignature = (payload, signature, secretKey) => {
-  const hmac = crypto.createHmac("sha256", secretKey);
-  const calculatedSignature = hmac.update(payload).digest("hex");
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(calculatedSignature)
-  );
-};
-
 export const handleWebhook = asyncHandler(async (req, res) => {
   try {
     const signature = req.headers["noon-signature"];
 
-    // Verify webhook signature
     if (
       !verifyNoonSignature(
-        JSON.stringify(req.body),
+        req.rawBody,
         signature,
-        process.env.NOON_SECRET_KEY
+        process.env.NOON_WEBHOOK_SECRET
       )
     ) {
       return res.status(401).json({
@@ -436,13 +426,13 @@ export const handleWebhook = asyncHandler(async (req, res) => {
       });
     }
 
+    const payload = JSON.parse(req.rawBody);
     const {
       order: { reference: orderId },
       payment: { status: paymentStatus },
       event,
-    } = req.body;
+    } = payload;
 
-    // Find the transaction
     const transaction = await transactionModel.findOne({ orderId });
     if (!transaction) {
       return res.status(404).json({
@@ -455,10 +445,8 @@ export const handleWebhook = asyncHandler(async (req, res) => {
     switch (paymentStatus.toLowerCase()) {
       case "success":
       case "authorized":
-        // Update transaction status
-        transaction.status = "Paid";
+        transaction.status = "paid";
         await transaction.save();
-
         break;
 
       case "failed":
@@ -475,24 +463,39 @@ export const handleWebhook = asyncHandler(async (req, res) => {
         break;
 
       default:
-        // Log unknown status for monitoring
         console.log(`Unhandled payment status: ${paymentStatus}`);
     }
 
-    // Always return 200 to acknowledge receipt
     return res.status(200).json({
       success: true,
       message: "Webhook processed successfully",
     });
   } catch (error) {
     console.error("Webhook processing error:", error);
-    // Always return 200 even on error to prevent retries
     return res.status(200).json({
       success: true,
       message: "Webhook received",
     });
   }
 });
+const verifyNoonSignature = (rawBody, signature, secretKey) => {
+  if (!rawBody || !signature || !secretKey) {
+    return false;
+  }
+
+  try {
+    const hmac = crypto.createHmac("sha256", secretKey);
+    const calculatedSignature = hmac.update(rawBody).digest("hex");
+
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(calculatedSignature)
+    );
+  } catch (error) {
+    console.error("Signature verification error:", error);
+    return false;
+  }
+};
 export const getInvoice = asyncHandler(async (req, res, next) => {
   const { invoiceId } = req.params;
   const invoice = await invoceModel.findById(invoiceId).select("invoicePath");
