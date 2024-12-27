@@ -418,7 +418,7 @@ const verifyNoonSignature = (payload, signature, secretKey) => {
   );
 };
 
-const handleNoonWebhook = asyncHandler(async (req, res) => {
+export const handleWebhook = asyncHandler(async (req, res) => {
   try {
     const signature = req.headers["noon-signature"];
 
