@@ -58,7 +58,7 @@ router.put(
   validation(validators.bookeTicket),
   tripController.BookedTrip
 );
-router.post("/webhook", rawBodyMiddleware, tripController.handleWebhook);
+router.post("/webhock", rawBodyMiddleware, tripController.handleWebhook);
 
 router.get("/invoice/:invoiceId", tripController.getInvoice);
 router.get(
