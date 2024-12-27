@@ -58,15 +58,7 @@ router.put(
   validation(validators.bookeTicket),
   tripController.BookedTrip
 );
-router.post("/webhock", rawBodyMiddleware, async (req, res, next) => {
-  try {
-    // Pass the raw body to the controller
-    await tripController.handleWebhook(req, res, next);
-  } catch (error) {
-    console.error("Error processing webhook:", error);
-    res.status(500).send("Internal server error");
-  }
-});
+router.post("/webhook", rawBodyMiddleware, tripController.handleWebhook);
 
 router.get("/invoice/:invoiceId", tripController.getInvoice);
 router.get(
