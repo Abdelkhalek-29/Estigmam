@@ -409,123 +409,53 @@ export const BookedTrip = asyncHandler(async (req, res) => {
   }, 1000);
 });
 
-export const handleWebhook = async (req, res, next) => {
+// Function to validate the signature
+const validateSignature = (rawBody, signature, secret) => {
+  const hash = crypto
+    .createHmac("sha256", secret)
+    .update(rawBody)
+    .digest("base64");
+  return hash === signature;
+};
+
+// Controller function to handle the webhook
+export const handleWebhook = async (req, res) => {
   try {
-    const rawBody = req.body.toString("utf8");
-    const signature = req.headers["x-signature"]; // Replace with the actual header name for the signature
+    const rawBody = req.rawBody;
+    const signature = req.headers["x-signature"]; // Adjust header name as needed
+    const secret = process.env.WEBHOOK_SECRET; // Ensure this is set in your environment
 
     // Validate the signature
-    const isValid = validateSignature(rawBody, signature);
-    if (!isValid) {
+    if (!validateSignature(rawBody, signature, secret)) {
+      console.error("Invalid signature");
       return res.status(400).send("Invalid signature");
     }
 
     // Parse the JSON body
     const event = JSON.parse(rawBody);
 
-    // Process the event
-    // For example, handle different event types
+    // Handle the event based on its type
     switch (event.eventType) {
       case "AUTHORIZED":
         console.log("Order AUTHORIZED");
+        // Add your handling logic here
         break;
       case "FAILED":
         console.log("Order FAILED");
+        // Add your handling logic here
         break;
-      // Add more cases as needed
+      // Handle other event types as needed
       default:
         console.log("Unhandled event type:", event.eventType);
     }
 
+    // Respond to acknowledge receipt of the webhook
     res.status(200).send("Webhook received");
   } catch (error) {
     console.error("Error handling webhook:", error);
     res.status(500).send("Internal server error");
   }
 };
-
-// Function to validate the signature
-const validateSignature = (rawBody, signature) => {
-  const secret = "your_secret_key"; // Replace with your actual secret key
-  const hash = crypto
-    .createHmac("sha256", secret)
-    .update(rawBody)
-    .digest("hex");
-  return hash === signature;
-};
-
-// Helper Function for Validating Signature
-function isValidSignature(payload, secretKey, receivedSignature) {
-  const dataString = createDataString(payload);
-  const calculatedSignature = calculateSignature(dataString, secretKey);
-
-  if (!receivedSignature) {
-    console.error("Missing received signature");
-    return false;
-  }
-
-  if (calculatedSignature !== receivedSignature) {
-    console.error(
-      "Signature mismatch. Expected:",
-      calculatedSignature,
-      "Received:",
-      receivedSignature
-    );
-    return false;
-  }
-
-  return true;
-}
-
-// Helper Functions
-function createDataString(payload) {
-  const fields = [
-    payload.orderId || "",
-    payload.orderStatus || "",
-    payload.eventId || "",
-    payload.eventType || "",
-    payload.timeStamp || "",
-    payload.originalOrderId || "",
-    payload.merchantOrderReference || "",
-    payload.attemptNumber || "",
-  ];
-  const dataString = fields.join(",");
-  console.log("Constructed Data String:", dataString);
-  return dataString;
-}
-
-function calculateSignature(dataString, secretKey) {
-  console.log("Data String (before HMAC):", dataString);
-
-  const hmac = crypto.createHmac("sha512", secretKey);
-  hmac.update(dataString, "utf8");
-
-  const signature = hmac.digest("base64");
-  console.log("Generated Signature:", signature);
-
-  return signature;
-}
-
-async function updateOrderStatus(transactionsModel, orderId, status) {
-  try {
-    const result = await transactionsModel.findOneAndUpdate(
-      { orderId }, // Use `orderId` as the lookup field
-      { status },
-      { new: true } // Return the updated document
-    );
-
-    if (!result) {
-      console.log(`Order ${orderId} not found`);
-      return false;
-    }
-
-    console.log(`Order ${orderId} status updated to ${status}`);
-    return true;
-  } catch (error) {
-    console.error(`Error updating order ${orderId}:`, error);
-    throw error;
-  }
-}
 
 export const getInvoice = asyncHandler(async (req, res, next) => {
   const { invoiceId } = req.params;
