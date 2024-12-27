@@ -409,46 +409,90 @@ export const BookedTrip = asyncHandler(async (req, res) => {
   }, 1000);
 });
 
-export const handleWebhook = async (req, res) => {
+const verifyNoonSignature = (payload, signature, secretKey) => {
+  const hmac = crypto.createHmac("sha256", secretKey);
+  const calculatedSignature = hmac.update(payload).digest("hex");
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(calculatedSignature)
+  );
+};
+
+const handleNoonWebhook = asyncHandler(async (req, res) => {
   try {
-    const rawBody = req.body.toString("utf8");
-    const signature = req.headers["x-signature"];
+    const signature = req.headers["noon-signature"];
 
-    // Validate the signature
-    const isValid = validateSignature(rawBody, signature);
-    if (!isValid) {
-      return res.status(400).send("Invalid signature");
+    // Verify webhook signature
+    if (
+      !verifyNoonSignature(
+        JSON.stringify(req.body),
+        signature,
+        process.env.NOON_SECRET_KEY
+      )
+    ) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid signature",
+      });
     }
 
-    // Parse the JSON body
-    const event = JSON.parse(rawBody);
-    switch (event.eventType) {
-      case "AUTHORIZED":
-        console.log("Order AUTHORIZED");
+    const {
+      order: { reference: orderId },
+      payment: { status: paymentStatus },
+      event,
+    } = req.body;
+
+    // Find the transaction
+    const transaction = await transactionModel.findOne({ orderId });
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: "Transaction not found",
+      });
+    }
+
+    // Handle different payment statuses
+    switch (paymentStatus.toLowerCase()) {
+      case "success":
+      case "authorized":
+        // Update transaction status
+        transaction.status = "Paid";
+        await transaction.save();
+
         break;
-      case "FAILED":
-        console.log("Order FAILED");
+
+      case "failed":
+      case "declined":
+      case "expired":
+        transaction.status = "failed";
+        await transaction.save();
         break;
+
+      case "voided":
+      case "reversed":
+        transaction.status = "reversed";
+        await transaction.save();
+        break;
+
       default:
-        console.log("Unhandled event type:", event.eventType);
+        // Log unknown status for monitoring
+        console.log(`Unhandled payment status: ${paymentStatus}`);
     }
-    res.status(200).send("Webhook received");
+
+    // Always return 200 to acknowledge receipt
+    return res.status(200).json({
+      success: true,
+      message: "Webhook processed successfully",
+    });
   } catch (error) {
-    console.error("Error handling webhook:", error);
-    res.status(500).send("Internal server error");
+    console.error("Webhook processing error:", error);
+    // Always return 200 even on error to prevent retries
+    return res.status(200).json({
+      success: true,
+      message: "Webhook received",
+    });
   }
-};
-const validateSignature = (rawBody, signature) => {
-  const secret = process.env.NOON_SECRET_KEY;
-  if (!secret) {
-    throw new Error("Secret key is not defined");
-  }
-  const hash = crypto
-    .createHmac("sha256", secret)
-    .update(rawBody)
-    .digest("base64");
-  return hash === signature;
-};
+});
 export const getInvoice = asyncHandler(async (req, res, next) => {
   const { invoiceId } = req.params;
   const invoice = await invoceModel.findById(invoiceId).select("invoicePath");
