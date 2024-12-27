@@ -25,12 +25,13 @@ import searchRouter from "./modules/search/search.router.js";
 import activityRouter from "./modules/activity/activity.router.js";
 import paymentRouter from "./modules/payment/payment.router.js";
 import { globalErrorHandling } from "./utils/errorHandling.js";
+import bodyParser from "body-parser";
 import cors from "cors";
 const initApp = (app, express) => {
   app.use(cors());
   //convert Buffer Data
   app.use(express.json());
-
+  app.use(bodyParser.json());
   //Setup API Routing
   app.use(`/auth`, authRouter);
   app.use(`/owner`, ownerRouter);
