@@ -5,7 +5,7 @@ import cloudinary from "../../../utils/cloudinary.js";
 import { asyncHandler } from "../../../utils/errorHandling.js";
 
 export const addActivity = asyncHandler(async (req, res, next) => {
-  const { name_ar,name_en, type, categoryId } = req.body;
+  const { name_ar, name_en, type, categoryId } = req.body;
 
   let typeOfPlacesAndTools = await typesOfPlacesModel.findById(type);
   if (!typeOfPlacesAndTools) {
@@ -18,7 +18,8 @@ export const addActivity = asyncHandler(async (req, res, next) => {
   }
 
   const newActivity = await activityModel.create({
-    name_ar,name_en,
+    name_ar,
+    name_en,
     type,
     createBy: req.owner._id,
     categoryId: category._id,
@@ -102,11 +103,26 @@ export const updateActivity = asyncHandler(async (req, res, next) => {
 export const getActivities = asyncHandler(async (req, res, next) => {
   const { typeId } = req.params;
 
-  const activities = await activityModel.find({ type: typeId }).populate({
-    path: "type",
-    ref:"TypesOfPlaces",
-    select: "name_ar -_id",
-  });
+  const activities = await activityModel
+    .find({ type: typeId })
+    .select("_id name_ar type createBy createdAt updatedAt")
+    .populate({
+      path: "type",
+      ref: "TypesOfPlaces",
+      select: "name_ar -_id",
+    });
 
-  res.status(200).json({ activities });
+  const formattedActivities = activities.map((activity) => ({
+    _id: activity._id,
+    name: activity.name_ar,
+    type: {
+      name: activity.type?.name_ar || null,
+    },
+    createBy: activity.createBy,
+    createdAt: activity.createdAt,
+    updatedAt: activity.updatedAt,
+    __v: activity.__v,
+  }));
+
+  res.status(200).json({ activities: formattedActivities });
 });

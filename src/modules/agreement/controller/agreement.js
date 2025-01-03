@@ -13,7 +13,8 @@ export const addAgreement = asyncHandler(async (req, res, next) => {
 
 export const getAgreement = asyncHandler(async (req, res, next) => {
   const infoApp = await agreementModel.find();
-  res.status(200).json({ infoApp })})
+  res.status(200).json({ infoApp });
+});
 
 export const getRegisterAgreement = asyncHandler(async (req, res, next) => {
   const agreements = await agreementOwnerModel.find({
@@ -37,7 +38,7 @@ export const getRegisterAgreement = asyncHandler(async (req, res, next) => {
     success: true,
     data: registerAgreements,
   });
-  });
+});
 
 export const addAgreementOwner = asyncHandler(async (req, res, next) => {
   const { agreements } = req.body;
@@ -49,10 +50,11 @@ export const addAgreementOwner = asyncHandler(async (req, res, next) => {
   return res.status(201).json({
     message: "Agreements added successfully.",
     data: newAgreementOwner,
-})})
+  });
+});
 
 export const getAgreementByTitle = asyncHandler(async (req, res, next) => {
-  const { title } = req.query; // Get the title from query parameters
+  const { title } = req.query;
 
   if (!title) {
     return res.status(400).json({
