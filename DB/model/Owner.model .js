@@ -48,6 +48,7 @@ const OwnerSchema = new Schema(
       enum: ["male", "female"],
     },
     phone: { type: String, required: true, unique: true },
+    countryCode: { type: String, required: true },
     phoneWithCode: { type: String },
     role: {
       type: String,

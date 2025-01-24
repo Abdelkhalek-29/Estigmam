@@ -184,7 +184,7 @@ export const register = asyncHandler(async (req, res, next) => {
 });
 
 export const login = asyncHandler(async (req, res, next) => {
-  const { phone, password } = req.body;
+  const { phone, password, countryCode } = req.body;
   let user, role;
 
   user = await OwnerModel.findOne({
@@ -216,7 +216,6 @@ export const login = asyncHandler(async (req, res, next) => {
     return next(new Error("Invalid phone or password", { status: 400 }));
   }
 
-  // Generate token
   const token = jwt.sign(
     { id: user._id, phone: user.phone, role },
     process.env.TOKEN_SIGNATURE
@@ -234,6 +233,7 @@ export const login = asyncHandler(async (req, res, next) => {
     nationalID: user.nationalID || user.N_id,
     email: user.email,
     phone: user.phone,
+    countryCode: user.countryCode,
     userName: user.userName,
     role: user.role,
     isUpdated: user.isUpdated,
