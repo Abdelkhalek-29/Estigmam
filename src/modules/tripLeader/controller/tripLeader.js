@@ -17,19 +17,16 @@ const predefinedTypes = [
   { id: "66dc1ba737f54a0f875bf3d1", name: { en: "Sea bike", ar: "دباب بحرى" } },
 ];
 export const addTripLeader = asyncHandler(async (req, res, next) => {
-  const { phone, countryCode } = req.body;
+  const leaders = req.body;
   const ownerId = req.owner._id;
 
-  // Ensure `phone` is always an array
-  const phoneArray = Array.isArray(phone) ? phone : [phone];
+  const phoneArray = leaders.map((leader) => leader.phone);
 
-  // Check for existing trip leaders with the provided phone numbers
   const existingLeaders = await tripLeaderModel.find({
     phone: { $in: phoneArray },
   });
   const existingPhones = existingLeaders.map((leader) => leader.phone);
 
-  // If any phone numbers already exist, return an error
   if (existingPhones.length > 0) {
     return next(
       new Error(
@@ -40,22 +37,17 @@ export const addTripLeader = asyncHandler(async (req, res, next) => {
       )
     );
   }
-
-  // Create new trip leader entries
-  const newLeaders = phoneArray.map((phone) => ({
+  const newLeaders = leaders.map(({ countryCode, phone }) => ({
     countryCode,
     phone,
     password: Randomstring.generate({ length: 8 }),
-    ownerId: req.owner._id,
+    ownerId,
   }));
 
-  // Insert new leaders into the database
   const createdLeaders = await tripLeaderModel.insertMany(newLeaders);
 
-  // Update the owner to indicate leaders have been added
   await OwnerModel.findByIdAndUpdate(ownerId, { addLeader: true });
 
-  // Return a success response
   return res.status(201).json({
     success: true,
     message: "Message sent to trip leaders!",
