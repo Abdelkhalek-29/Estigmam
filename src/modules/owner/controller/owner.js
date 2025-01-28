@@ -190,7 +190,7 @@ export const login = asyncHandler(async (req, res, next) => {
   let user, role;
 
   user = await OwnerModel.findOne({
-    $or: [{ phone }, { phoneWithCode: phone }],
+    $and: [{ phone }, { countryCode }],
   })
     .populate("country", "name image")
     .populate("city", "name");
@@ -198,7 +198,7 @@ export const login = asyncHandler(async (req, res, next) => {
   if (user) {
     role = "Owner";
   } else {
-    user = await tripLeaderModel.findOne({ phone });
+    user = await tripLeaderModel.findOne({ phone, countryCode });
 
     if (user) {
       role = "TripLeader";
