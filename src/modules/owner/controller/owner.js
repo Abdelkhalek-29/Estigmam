@@ -36,6 +36,7 @@ export const register = asyncHandler(async (req, res, next) => {
     fullName,
     MarineActivity,
     LandActivity,
+    countryCode,
   } = req.body;
 
   const isUser = await OwnerModel.findOne({ phone });
@@ -83,6 +84,7 @@ export const register = asyncHandler(async (req, res, next) => {
     email,
     password: hashPassword,
     nationalID,
+    countryCode,
   });
 
   const userCode = randomstring.generate({ length: 15 });
@@ -269,16 +271,16 @@ export const login = asyncHandler(async (req, res, next) => {
 });
 
 export const sendForgetCode = asyncHandler(async (req, res, next) => {
-  const { phone } = req.body;
+  const { phone, countryCode } = req.body;
 
   let user, role;
 
-  user = await OwnerModel.findOne({ phone });
+  user = await OwnerModel.findOne({ phone, countryCode });
 
   if (user) {
     role = "Owner";
   } else {
-    user = await tripLeaderModel.findOne({ phone });
+    user = await tripLeaderModel.findOne({ phone, countryCode });
 
     if (user) {
       role = "TripLeader";
@@ -318,7 +320,10 @@ export const sendForgetCode = asyncHandler(async (req, res, next) => {
 });
 
 export const resendCode = asyncHandler(async (req, res, next) => {
-  const user = await OwnerModel.findOne({ phone: req.owner.phone });
+  const user = await OwnerModel.findOne({
+    phone: req.owner.phone,
+    countryCode: req.owner.countryCode,
+  });
 
   /*const code = randomstring.generate({
     length: 4,

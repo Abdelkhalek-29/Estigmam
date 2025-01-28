@@ -37,6 +37,7 @@ export const registerSchema = joi
       .regex(/^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/),
     MarineActivity: joi.string(),
     LandActivity: joi.string(),
+    countryCode: joi.string().required(),
   })
   .required();
 
@@ -50,6 +51,7 @@ export const login = joi
       .string()
       .regex(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,}$/)
       .required(),
+    countryCode: joi.string().required(),
   })
   .required();
 
@@ -64,6 +66,7 @@ export const sendForgetCode = joi
       .string()
       .regex(/^[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/)
       .required(),
+    countryCode: joi.string().required(),
   })
   .required();
 
