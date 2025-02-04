@@ -99,13 +99,16 @@ const OwnerSchema = new Schema(
       total_Expenses: { type: Number, required: true, default: 0 },
       lastUpdated: { type: Date, default: Date.now },
     },
-    bank_account: {
-      account_owner: { type: String },
-      bank_name: { type: String },
-      branch: { type: String },
-      IBAN: { type: String },
-      local_num: { type: String },
-    },
+    bank_account: [
+      {
+        account_owner: { type: String, required: true },
+        bank_name: { type: String, required: true },
+        branch: { type: String },
+        IBAN: { type: String, required: true, unique: true },
+        local_num: { type: String },
+      },
+    ],
+
     isUpdated: {
       type: Boolean,
       default: false,

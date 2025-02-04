@@ -161,19 +161,21 @@ export const bankAccount = asyncHandler(async (req, res, next) => {
     });
   }
 
-  user.bank_account = {
+  // Push the new bank account into the bank_account array
+  user.bank_account.push({
     account_owner,
     bank_name,
     branch,
     IBAN,
     local_num,
-  };
+  });
 
   await user.save();
 
   res.status(201).json({
     success: true,
     message: "Bank account added successfully!",
+    bank_accounts: user.bank_account,
   });
 });
 
