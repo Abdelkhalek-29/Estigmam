@@ -84,6 +84,7 @@ export const charging = asyncHandler(async (req, res, next) => {
       type: "Wallet",
       method,
       reason: "Wallet recharge",
+      orderId: paymentResponse.result?.orderId || "MISSING_ORDER_ID",
     });
 
     res.status(200).json({
@@ -145,7 +146,6 @@ export const userWallet = asyncHandler(async (req, res, next) => {
     data: { userBalance, transactions },
   });
 });
-
 // Owner App
 export const bankAccount = asyncHandler(async (req, res, next) => {
   const userId = req.owner?._id || req.tripLeader?._id;
@@ -160,8 +160,6 @@ export const bankAccount = asyncHandler(async (req, res, next) => {
       message: "User not found",
     });
   }
-
-  // Push the new bank account into the bank_account array
   user.bank_account.push({
     account_owner,
     bank_name,
@@ -265,6 +263,7 @@ export const walletCharging = asyncHandler(async (req, res, next) => {
       type: "Wallet",
       method,
       reason: "Wallet recharge",
+      orderId: paymentResponse.result?.orderId || "MISSING_ORDER_ID",
     });
 
     // Return the checkout URL
