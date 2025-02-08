@@ -107,9 +107,9 @@ const OwnerSchema = new Schema(
         IBAN: { type: String, required: true, unique: true },
         local_num: { type: String },
         isDefault: { type: Boolean, default: false },
+        bankId: { type: Types.ObjectId, ref: "Bank", required: true }, // Reference to Bank model
       },
     ],
-
     isUpdated: {
       type: Boolean,
       default: false,

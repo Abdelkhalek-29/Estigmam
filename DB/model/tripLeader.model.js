@@ -102,6 +102,7 @@ const tripLeaderSchema = new Schema(
       branch: { type: String },
       IBAN: { type: String },
       local_num: { type: String },
+      isDefault: { type: Boolean, default: false },
     },
     isUpdated: {
       type: Boolean,

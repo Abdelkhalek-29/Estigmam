@@ -149,7 +149,8 @@ export const userWallet = asyncHandler(async (req, res, next) => {
 // Owner App
 export const bankAccount = asyncHandler(async (req, res, next) => {
   const userId = req.owner?._id || req.tripLeader?._id;
-  const { account_owner, bank_name, branch, IBAN, local_num } = req.body;
+  const { account_owner, bank_name, bankId, branch, IBAN, local_num } =
+    req.body;
 
   const userSchema = req.owner ? OwnerModel : tripLeaderModel;
 
@@ -166,6 +167,7 @@ export const bankAccount = asyncHandler(async (req, res, next) => {
     branch,
     IBAN,
     local_num,
+    bankId,
   });
 
   await user.save();
@@ -284,6 +286,9 @@ export const ownerWallet = asyncHandler(async (req, res, next) => {
   const { minAmount, maxAmount, fromDate, toDate, type, sortBy, sortOrder } =
     req.query;
 
+  // Get the accepted language from the request headers (e.g., "en" or "ar")
+  const acceptedLanguage = req.headers["accept-language"] || "en";
+
   const filter = { actorId: userId };
 
   if (minAmount || maxAmount) {
@@ -310,9 +315,15 @@ export const ownerWallet = asyncHandler(async (req, res, next) => {
     sortOptions.createdAt = -1;
   }
 
+  // Fetch user balance and bank accounts
   const userBalance = await userSchema
     .findById(userId)
-    .select("wallet bank_account");
+    .select("wallet bank_account")
+    .populate({
+      path: "bank_account.bankId", // Populate using bankId
+      model: "Bank",
+      select: "bank_image name_en name_ar", // Select the required fields
+    });
 
   if (!userBalance) {
     return res.status(404).json({
@@ -321,16 +332,31 @@ export const ownerWallet = asyncHandler(async (req, res, next) => {
     });
   }
 
+  // Fetch transactions
   const transactions = await transactionModel
     .find(filter)
     .sort(sortOptions)
     .select("-actorType -actorId");
 
+  // Map bank accounts to include the bank image and name based on the accepted language
+  const bankAccountsWithDetails = userBalance.bank_account.map((account) => {
+    const bankName =
+      acceptedLanguage === "ar"
+        ? account.bankId?.name_ar
+        : account.bankId?.name_en;
+
+    return {
+      ...account.toObject(),
+      bank_name: bankName || null, // Return bank name directly as a string
+      bank_image: account.bankId?.bank_image || null, // Return only the bank image
+    };
+  });
+
   res.status(200).json({
     success: true,
     data: {
       wallet: userBalance.wallet,
-      bank_account: userBalance.bank_account || {}, // Return as an object
+      bank_account: bankAccountsWithDetails, // Return bank accounts with names and images
       transactions,
     },
   });
