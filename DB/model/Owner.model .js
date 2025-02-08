@@ -106,6 +106,7 @@ const OwnerSchema = new Schema(
         branch: { type: String },
         IBAN: { type: String, required: true, unique: true },
         local_num: { type: String },
+        isDefault: { type: Boolean, default: false },
       },
     ],
 

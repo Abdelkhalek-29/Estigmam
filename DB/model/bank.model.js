@@ -4,6 +4,7 @@ const bankSchema = new Schema(
   {
     name_en: { type: String, required: true },
     name_ar: { type: String, required: true },
+    bank_image: { type: String, required: true },
   },
   { timestamps: true }
 );

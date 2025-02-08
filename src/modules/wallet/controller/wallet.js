@@ -240,7 +240,6 @@ export const walletCharging = asyncHandler(async (req, res, next) => {
         });
     }
 
-    // Find the user
     const user = await userSchema.findById(userId);
     if (!user) {
       return res.status(404).json({
@@ -249,13 +248,11 @@ export const walletCharging = asyncHandler(async (req, res, next) => {
       });
     }
 
-    // Update wallet details
     user.wallet.balance += validAmount;
     user.wallet.total_Deposit += validAmount;
     user.wallet.lastUpdated = Date.now();
     await user.save();
 
-    // Create a transaction record
     await transactionModel.create({
       actorId: userId,
       actorType: req.owner ? "Owner" : "TripLeader",
@@ -266,7 +263,6 @@ export const walletCharging = asyncHandler(async (req, res, next) => {
       orderId: paymentResponse.result?.orderId || "MISSING_ORDER_ID",
     });
 
-    // Return the checkout URL
     res.status(200).json({
       success: true,
       message: "Go to checkout page!",
@@ -318,23 +314,25 @@ export const ownerWallet = asyncHandler(async (req, res, next) => {
     .findById(userId)
     .select("wallet bank_account");
 
+  if (!userBalance) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
+  }
+
   const transactions = await transactionModel
     .find(filter)
     .sort(sortOptions)
     .select("-actorType -actorId");
+
   res.status(200).json({
     success: true,
-    data: { userBalance, transactions },
-  });
-});
-
-export const addBank = asyncHandler(async (req, res, next) => {
-  const { name_ar, name_en } = req.body;
-
-  const bank = await bankModel.create({ name_ar, name_en });
-  res.status(200).json({
-    success: true,
-    message: "Bank addded successfully !",
+    data: {
+      wallet: userBalance.wallet,
+      bank_account: userBalance.bank_account || {}, // Return as an object
+      transactions,
+    },
   });
 });
 
@@ -344,14 +342,70 @@ export const getBanks = asyncHandler(async (req, res, next) => {
     ? "name_ar"
     : "name_en";
 
-  const banks = await bankModel.find().select(`${languageKey}`);
+  const banks = await bankModel.find().select("name_en name_ar bank_image");
 
   const formattedBanks = banks.map((bank) => ({
     name: bank[languageKey],
+    bank_image: bank.bank_image,
   }));
 
   res.status(200).json({
     success: true,
     data: formattedBanks,
+  });
+});
+
+export const addBank = asyncHandler(async (req, res, next) => {
+  const { name_ar, name_en } = req.body;
+  let bank_image = "";
+
+  if (req.files.bank_image && req.files.bank_image.length > 0) {
+    const file = req.files.bank_image[0];
+    const result = await cloudinary.uploader.upload(file.path, {
+      folder: `${process.env.FOLDER_CLOUDINARY}/bank_image/`,
+    });
+    bank_image = result.secure_url;
+  }
+
+  const bank = await bankModel.create({ name_ar, name_en, bank_image });
+  res.status(200).json({
+    success: true,
+    message: "Bank added successfully!",
+    data: bank,
+  });
+});
+
+export const setDefault = asyncHandler(async (req, res, next) => {
+  const { bankId } = req.params;
+  const userId = req.owner?._id || req.tripLeader?._id;
+  const userSchema = req.owner ? OwnerModel : tripLeaderModel;
+
+  const user = await userSchema.findById(userId);
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
+  }
+
+  const bank = user.bank_account.find((b) => b._id.toString() === bankId);
+  if (!bank) {
+    return res.status(404).json({
+      success: false,
+      message: "Bank account not found",
+    });
+  }
+
+  // Toggle the isDefault value
+  bank.isDefault = !bank.isDefault;
+
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: `Bank account ${
+      bank.isDefault ? "set as default" : "unset as default"
+    } successfully!`,
+    bank_account: user.bank_account,
   });
 });
