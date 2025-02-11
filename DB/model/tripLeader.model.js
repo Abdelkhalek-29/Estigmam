@@ -96,14 +96,17 @@ const tripLeaderSchema = new Schema(
       total_Expenses: { type: Number, required: true, default: 0 },
       lastUpdated: { type: Date, default: Date.now },
     },
-    bank_account: {
-      account_owner: { type: String },
-      bank_name: { type: String },
-      branch: { type: String },
-      IBAN: { type: String },
-      local_num: { type: String },
-      isDefault: { type: Boolean, default: false },
-    },
+    bank_account: [
+      {
+        account_owner: { type: String, required: true },
+        bank_name: { type: String, required: true },
+        branch: { type: String },
+        IBAN: { type: String, required: true, unique: true },
+        local_num: { type: String },
+        isDefault: { type: Boolean, default: false },
+        bankId: { type: Types.ObjectId, ref: "Bank", required: true }, // Reference to Bank model
+      },
+    ],
     isUpdated: {
       type: Boolean,
       default: false,

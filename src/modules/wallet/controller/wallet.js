@@ -146,7 +146,6 @@ export const userWallet = asyncHandler(async (req, res, next) => {
     data: { userBalance, transactions },
   });
 });
-// Owner App
 export const bankAccount = asyncHandler(async (req, res, next) => {
   const userId = req.owner?._id || req.tripLeader?._id;
   const { account_owner, bank_name, bankId, branch, IBAN, local_num } =
@@ -332,32 +331,31 @@ export const ownerWallet = asyncHandler(async (req, res, next) => {
     });
   }
 
-  // Fetch transactions
-  const transactions = await transactionModel
-    .find(filter)
-    .sort(sortOptions)
-    .select("-actorType -actorId");
+  // Ensure bank_account is an array before calling .map()
+  const bankAccountsWithDetails = Array.isArray(userBalance.bank_account)
+    ? userBalance.bank_account.map((account) => {
+        const bankName =
+          acceptedLanguage === "ar"
+            ? account.bankId?.name_ar
+            : account.bankId?.name_en;
 
-  // Map bank accounts to include the bank image and name based on the accepted language
-  const bankAccountsWithDetails = userBalance.bank_account.map((account) => {
-    const bankName =
-      acceptedLanguage === "ar"
-        ? account.bankId?.name_ar
-        : account.bankId?.name_en;
-
-    return {
-      ...account.toObject(),
-      bank_name: bankName || null, // Return bank name directly as a string
-      bank_image: account.bankId?.bank_image || null, // Return only the bank image
-    };
-  });
+        return {
+          ...account.toObject(),
+          bank_name: bankName || null, // Return bank name directly as a string
+          bank_image: account.bankId?.bank_image || null, // Return only the bank image
+        };
+      })
+    : []; // If it's not an array, return an empty array
 
   res.status(200).json({
     success: true,
     data: {
       wallet: userBalance.wallet,
       bank_account: bankAccountsWithDetails, // Return bank accounts with names and images
-      transactions,
+      transactions: await transactionModel
+        .find(filter)
+        .sort(sortOptions)
+        .select("-actorType -actorId"),
     },
   });
 });
