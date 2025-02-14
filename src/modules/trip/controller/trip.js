@@ -305,6 +305,11 @@ export const BookedTrip = asyncHandler(async (req, res) => {
       orderId,
     });
 
+    await userModel.findByIdAndUpdate(userId, {
+      $push: {
+        Booked: { tripId, BookedTicket },
+      },
+    });
     return res.status(200).json({
       success: true,
       message: "Redirect to payment",
