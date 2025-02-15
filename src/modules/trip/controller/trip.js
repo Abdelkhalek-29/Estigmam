@@ -1250,7 +1250,7 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
       { path: "activity", select: "name_ar name_en" },
     ],
   });
-  console.log(user);
+
   if (!user) {
     return next(new Error("User not found", { status: 404 }));
   }
@@ -1260,7 +1260,7 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
 
   // Apply city filter if provided
   if (city) {
-    bookedTrips = bookedTrips.filter((trip) => trip.city === city);
+    bookedTrips = bookedTrips.filter((trip) => trip.cityId.name === city);
   }
 
   // Define status filters
@@ -1284,49 +1284,72 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
   }
 
   // Process trips
-  const trips = await Promise.all(
-    bookedTrips.map(async (trip) => {
-      const bookedTrip = user.Booked.find((b) =>
-        b.tripId?._id.equals(trip._id)
-      );
-      const bookedTickets = bookedTrip ? bookedTrip.BookedTicket : 0;
-      const isFavourite = user.Likes.includes(trip._id);
-      let commentsCount = 0;
+  const trips = bookedTrips.map((trip) => {
+    const bookedTrip = user.Booked.find((b) => b.tripId?._id.equals(trip._id));
+    const bookedTickets = bookedTrip ? bookedTrip.BookedTicket : 0;
+    const isFavourite = user.Likes.includes(trip._id);
 
-      if (trip.status === "pending") {
-        commentsCount = await ratingModel.countDocuments({ tripId: trip._id });
-      }
-
-      return {
-        ...trip.toObject(),
-        isFavourite,
-        bookedTickets,
-        category: {
-          _id: trip.category?._id,
-          name: trip.category ? trip.category[nameField] : "",
-        },
-        typeOfPlace: {
-          _id: trip.typeOfPlace?._id,
-          name: trip.typeOfPlace ? trip.typeOfPlace[nameField] : "",
-        },
-        activity: {
-          _id: trip.activity?._id || "",
-          name: trip.activity ? trip.activity[nameField] : "",
-        },
-        bedType: trip.bedType.map((b) => ({
-          _id: b._id,
-          name: b[nameField] || "",
-          image: b.image || "",
-        })),
-        addition: trip.addition.map((a) => ({
-          _id: a._id,
-          name: a[nameField] || "",
-          image: a.Image || "",
-        })),
-        ...(trip.status === "pending" && { commentsCount }),
-      };
-    })
-  );
+    return {
+      tripDuration: trip.tripDuration,
+      startLocation: trip.startLocation,
+      endLocation: trip.endLocation,
+      defaultImage: trip.defaultImage,
+      _id: trip._id,
+      startDate: trip.startDate,
+      endDate: trip.endDate,
+      peopleNumber: trip.peopleNumber,
+      numberOfPeopleAvailable: trip.numberOfPeopleAvailable,
+      cityId: trip.cityId,
+      berh: trip.berh,
+      tripTitle: trip.tripTitle,
+      priceMember: trip.priceMember,
+      addition: trip.addition.map((a) => ({
+        _id: a._id,
+        name: a[nameField] || "",
+      })),
+      bedType: trip.bedType.map((b) => ({
+        _id: b._id,
+        name: b[nameField] || "",
+        image: b.image || "",
+      })),
+      offer: trip.offer,
+      priceAfterOffer: trip.priceAfterOffer,
+      category: {
+        _id: trip.category?._id,
+        name: trip.category ? trip.category[nameField] : "",
+      },
+      isCustomized: trip.isCustomized,
+      typeOfPlace: {
+        _id: trip.typeOfPlace?._id,
+        name: trip.typeOfPlace ? trip.typeOfPlace[nameField] : "",
+      },
+      activity: {
+        _id: trip.activity?._id || "",
+        name: trip.activity ? trip.activity[nameField] : "",
+      },
+      city: trip.cityId.name,
+      tripCode: trip.tripCode,
+      distance: trip.distance,
+      status: trip.status,
+      totalEarnings: trip.totalEarnings,
+      isFavourite,
+      description: trip.description,
+      descriptionAddress: trip.descriptionAddress,
+      isLeaderCreate: trip.isLeaderCreate,
+      startLocationDetails: trip.startLocationDetails,
+      endLocationDetails: trip.endLocationDetails,
+      subImages: trip.subImages,
+      createdBy: trip.createdBy,
+      tripLeaderId: trip.tripLeaderId,
+      equipmentId: trip.equipmentId,
+      createdAt: trip.createdAt,
+      updatedAt: trip.updatedAt,
+      __v: trip.__v,
+      finalPrice: trip.priceAfterOffer.toFixed(2),
+      id: trip._id,
+      bookedTickets,
+    };
+  });
 
   res.status(200).json({ success: true, trips });
 });
