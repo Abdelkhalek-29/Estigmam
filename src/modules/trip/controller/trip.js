@@ -1235,6 +1235,7 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
   const currentDate = new Date();
 
   // Fetch the user with booked trips
+  // Fetch the user with booked trips
   const user = await userModel.findById(userId).populate({
     path: "Booked.tripId",
     populate: [
@@ -1258,6 +1259,28 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
   // Extract booked trips
   let bookedTrips = user.Booked.map((b) => b.tripId).filter(Boolean);
 
+  // Fetch trips that were created by the user but not booked (pending, cancelled, rejected)
+  const userCreatedTrips = await tripModel
+    .find({
+      userId,
+      status: { $in: ["pending", "cancelled", "rejected"] },
+    })
+    .populate([
+      { path: "typeOfPlace", select: "name_ar name_en" },
+      { path: "category", select: "name_ar name_en" },
+      { path: "bedType", select: "name_ar name_en image" },
+      { path: "addition", select: "name_ar name_en Image" },
+      {
+        path: "tripLeaderId",
+        select: "profileImage _id name tripsCounter averageRating",
+      },
+      { path: "cityId", select: "name" },
+      { path: "activity", select: "name_ar name_en" },
+    ]);
+
+  // Merge both lists
+  bookedTrips = [...bookedTrips, ...userCreatedTrips];
+
   // Apply city filter if provided
   if (city) {
     bookedTrips = bookedTrips.filter((trip) => trip.cityId.name === city);
@@ -1269,9 +1292,9 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
     (trip) => trip.startDate <= currentDate && trip.endDate >= currentDate, // Current
     (trip) => trip.startDate > currentDate, // Upcoming
     (trip) => trip.status === "completed", // Completed
-    (trip) => trip.status === "pending" && trip.isCustomized, // Pending (Customized)
-    (trip) => trip.status === "cancelled" && trip.isCustomized, // Cancelled (Customized)
-    (trip) => trip.status === "rejected", // Rejected
+    (trip) => trip.status === "pending" && trip.isCustomized,
+    (trip) => trip.status === "cancelled" && trip.isCustomized,
+    (trip) => trip.status === "rejected" && trip.isCustomized,
   ];
 
   if (
