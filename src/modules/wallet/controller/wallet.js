@@ -366,9 +366,10 @@ export const getBanks = asyncHandler(async (req, res, next) => {
     ? "name_ar"
     : "name_en";
 
-  const banks = await bankModel.find().select("name_en name_ar bank_image");
+  const banks = await bankModel.find().select("_id name_en name_ar bank_image");
 
   const formattedBanks = banks.map((bank) => ({
+    _id: bank._id,
     name: bank[languageKey],
     bank_image: bank.bank_image,
   }));

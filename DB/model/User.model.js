@@ -88,13 +88,8 @@ const userSchema = new Schema(
     },
     Booked: [
       {
-        tripId: {
-          type: Types.ObjectId,
-          ref: "Trip",
-        },
-        BookedTicket: {
-          type: Number,
-        },
+        tripId: { type: mongoose.Schema.Types.ObjectId, ref: "Trip" },
+        BookedTicket: Number,
       },
     ],
     userCode: {

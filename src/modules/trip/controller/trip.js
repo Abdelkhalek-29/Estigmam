@@ -252,7 +252,10 @@ export const BookedTrip = asyncHandler(async (req, res) => {
     await userModel.findByIdAndUpdate(userId, {
       $inc: {
         "wallet.balance": -totalCost,
-        "wallet.TotalWithdraw": totalCost,
+        "wallet.total_Expenses": totalCost,
+      },
+      $push: {
+        Booked: { tripId, BookedTicket },
       },
     });
   } else {
@@ -304,12 +307,12 @@ export const BookedTrip = asyncHandler(async (req, res) => {
       reason: trip.tripTitle,
       orderId,
     });
-
     await userModel.findByIdAndUpdate(userId, {
       $push: {
         Booked: { tripId, BookedTicket },
       },
     });
+
     return res.status(200).json({
       success: true,
       message: "Redirect to payment",
@@ -1231,35 +1234,44 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
   const { type, city } = req.query;
   const currentDate = new Date();
 
-  let matchQuery = {};
-  const typeIndex = parseInt(type, 10);
+  // Fetch the user with booked trips
+  const user = await userModel.findById(userId).populate({
+    path: "Booked.tripId",
+    populate: [
+      { path: "typeOfPlace", select: "name_ar name_en" },
+      { path: "category", select: "name_ar name_en" },
+      { path: "bedType", select: "name_ar name_en image" },
+      { path: "addition", select: "name_ar name_en Image" },
+      {
+        path: "tripLeaderId",
+        select: "profileImage _id name tripsCounter averageRating",
+      },
+      { path: "cityId", select: "name" },
+      { path: "activity", select: "name_ar name_en" },
+    ],
+  });
+  console.log(user);
+  if (!user) {
+    return next(new Error("User not found", { status: 404 }));
+  }
 
+  // Extract booked trips
+  let bookedTrips = user.Booked.map((b) => b.tripId).filter(Boolean);
+
+  // Apply city filter if provided
+  if (city) {
+    bookedTrips = bookedTrips.filter((trip) => trip.city === city);
+  }
+
+  // Define status filters
+  const typeIndex = parseInt(type, 10);
   const typeOptions = [
-    {
-      startDate: { $lte: currentDate },
-      endDate: { $gte: currentDate },
-      status: "current",
-    },
-    {
-      startDate: { $gt: currentDate },
-      status: "upComing",
-    },
-    {
-      status: "completed",
-    },
-    {
-      status: "pending",
-      userId,
-      isCustomized: true,
-    },
-    {
-      status: "cancelled",
-      userId,
-      isCustomized: true,
-    },
-    {
-      status: "rejected",
-    },
+    (trip) => trip.startDate <= currentDate && trip.endDate >= currentDate, // Current
+    (trip) => trip.startDate > currentDate, // Upcoming
+    (trip) => trip.status === "completed", // Completed
+    (trip) => trip.status === "pending" && trip.isCustomized, // Pending (Customized)
+    (trip) => trip.status === "cancelled" && trip.isCustomized, // Cancelled (Customized)
+    (trip) => trip.status === "rejected", // Rejected
   ];
 
   if (
@@ -1268,115 +1280,55 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
     typeIndex >= 0 &&
     typeIndex < typeOptions.length
   ) {
-    matchQuery = typeOptions[typeIndex];
+    bookedTrips = bookedTrips.filter(typeOptions[typeIndex]);
   }
 
-  if (city) {
-    matchQuery.city = city;
-  }
+  // Process trips
+  const trips = await Promise.all(
+    bookedTrips.map(async (trip) => {
+      const bookedTrip = user.Booked.find((b) =>
+        b.tripId?._id.equals(trip._id)
+      );
+      const bookedTickets = bookedTrip ? bookedTrip.BookedTicket : 0;
+      const isFavourite = user.Likes.includes(trip._id);
+      let commentsCount = 0;
 
-  let trips = [];
+      if (trip.status === "pending") {
+        commentsCount = await ratingModel.countDocuments({ tripId: trip._id });
+      }
 
-  if (matchQuery.status === "cancelled") {
-    // Directly fetch cancelled trips
-    trips = await tripModel.find(matchQuery).populate([
-      { path: "typeOfPlace", select: "name_ar name_en" },
-      { path: "category", select: "name_ar name_en" },
-      { path: "bedType", select: "name_ar name_en image" },
-      { path: "addition", select: "name_ar name_en Image" },
-      {
-        path: "tripLeaderId",
-        select: "profileImage _id name tripsCounter averageRating",
-      },
-      { path: "cityId", select: "name" },
-      { path: "activity", select: "name_ar name_en" },
-    ]);
-  } else {
-    // Filter trips based on user bookings
-    const user = await userModel.findById(userId).populate({
-      path: "Booked.tripId",
-      match: matchQuery,
-    });
+      return {
+        ...trip.toObject(),
+        isFavourite,
+        bookedTickets,
+        category: {
+          _id: trip.category?._id,
+          name: trip.category ? trip.category[nameField] : "",
+        },
+        typeOfPlace: {
+          _id: trip.typeOfPlace?._id,
+          name: trip.typeOfPlace ? trip.typeOfPlace[nameField] : "",
+        },
+        activity: {
+          _id: trip.activity?._id || "",
+          name: trip.activity ? trip.activity[nameField] : "",
+        },
+        bedType: trip.bedType.map((b) => ({
+          _id: b._id,
+          name: b[nameField] || "",
+          image: b.image || "",
+        })),
+        addition: trip.addition.map((a) => ({
+          _id: a._id,
+          name: a[nameField] || "",
+          image: a.Image || "",
+        })),
+        ...(trip.status === "pending" && { commentsCount }),
+      };
+    })
+  );
 
-    if (!user) {
-      return next(new Error("User not found", { status: 404 }));
-    }
-
-    const tripIds = user.Booked.map((trip) => trip.tripId?._id).filter(Boolean);
-
-    trips = await tripModel.find({ _id: { $in: tripIds } }).populate([
-      { path: "typeOfPlace", select: "name_ar name_en" },
-      { path: "category", select: "name_ar name_en" },
-      { path: "bedType", select: "name_ar name_en image" },
-      { path: "addition", select: "name_ar name_en Image" },
-      {
-        path: "tripLeaderId",
-        select: "profileImage _id name tripsCounter averageRating",
-      },
-      { path: "cityId", select: "name" },
-      { path: "activity", select: "name_ar name_en" },
-    ]);
-
-    trips = await Promise.all(
-      trips.map(async (trip) => {
-        const bookedTrip = user.Booked.find((b) =>
-          b.tripId?._id.equals(trip._id)
-        );
-        const bookedTickets = bookedTrip ? bookedTrip.BookedTicket : 0;
-
-        const isFavourite = user.Likes.includes(trip._id);
-
-        let commentsCount = 0;
-        if (trip.status === "pending") {
-          commentsCount = await ratingModel.countDocuments({
-            tripId: trip._id,
-          });
-        }
-
-        const categoryName = trip.category ? trip.category[nameField] : "";
-        const typeOfPlaceName = trip.typeOfPlace
-          ? trip.typeOfPlace[nameField]
-          : "";
-        const activityName = trip.activity ? trip.activity[nameField] : "";
-        const additionDetails = trip.addition.map((addition) => ({
-          _id: addition._id,
-          name: addition[nameField] || "",
-          image: addition.Image || "",
-        }));
-        const bedTypeDetails = trip.bedType.map((bedType) => ({
-          _id: bedType._id,
-          name: bedType[nameField] || "",
-          image: bedType.image || "",
-        }));
-
-        return {
-          ...trip.toObject(),
-          isFavourite,
-          bookedTickets,
-          category: {
-            _id: trip.category?._id,
-            name: categoryName,
-          },
-          typeOfPlace: {
-            _id: trip.typeOfPlace?._id,
-            name: typeOfPlaceName,
-          },
-          activity: {
-            _id: trip.activity?._id || "",
-            name: activityName,
-          },
-          bedType: bedTypeDetails,
-          addition: additionDetails,
-          ...(trip.status === "pending" && { commentsCount }),
-        };
-      })
-    );
-  }
-
-  res.status(200).json({
-    success: true,
-    trips,
-  });
+  res.status(200).json({ success: true, trips });
 });
 
 export const cancel = asyncHandler(async (req, res, next) => {
