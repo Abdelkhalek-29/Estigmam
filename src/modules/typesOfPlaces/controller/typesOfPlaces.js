@@ -5,7 +5,7 @@ import cloudinary from "../../../utils/cloudinary.js";
 import { asyncHandler } from "../../../utils/errorHandling.js";
 
 export const typesOfPlaces = asyncHandler(async (req, res, next) => {
-  const { name_ar,name_en,isTool, categoryId } = req.body;
+  const { name_ar, name_en, isTool, categoryId } = req.body;
 
   const category = await categoryModel.findById(categoryId);
   if (!category) {
@@ -13,7 +13,10 @@ export const typesOfPlaces = asyncHandler(async (req, res, next) => {
     return next(new Error("category not found", { cause: 404 }));
   }
   const typesOfPlaces = await typesOfPlacesModel.create({
-    name_ar,name_en,isTool, categoryId
+    name_ar,
+    name_en,
+    isTool,
+    categoryId,
   });
 
   /*const { secure_url, public_id } = await cloudinary.uploader.upload(
@@ -54,7 +57,7 @@ export const updateTypesOfPlaces = asyncHandler(async (req, res, next) => {
       req.file.path,
       {
         public_id: typesOfPlaces.image.id,
-      }
+      },
     );
     typesOfPlaces.image.url = secure_url;
   }
@@ -139,7 +142,7 @@ export const anyType = asyncHandler(async (req, res, next) => {
   });
 
   const activities = typesOfPlaces.map(
-    async (type) => await activityModel.find({ type: type._id })
+    async (type) => await activityModel.find({ type: type._id }),
   );
 
   const results = await Promise.all(activities);
@@ -160,26 +163,23 @@ export const anyType = asyncHandler(async (req, res, next) => {
   });
 });
 
-
-
-
 export const getallWithActivity = asyncHandler(async (req, res, next) => {
-  const lang = req.query.lang || 'ar'; // تحديد اللغة الافتراضية 'ar' إذا لم توجد لغة في الاستعلام
+  const lang = req.query.lang || "ar"; // تحديد اللغة الافتراضية 'ar' إذا لم توجد لغة في الاستعلام
 
   const result = await typesOfPlacesModel.aggregate([
     {
       $lookup: {
-        from: 'activities', // اسم مجموعة الأنشطة
-        localField: '_id', // الحقل الذي يربط الوثيقتين في مجموعة TypesOfPlaces
-        foreignField: 'type', // الحقل الذي يربط الوثيقتين في مجموعة Activity
-        as: 'activities' // اسم الحقل الذي سيتم تخزين الأنشطة فيه بعد الدمج
-      }
+        from: "activities", // اسم مجموعة الأنشطة
+        localField: "_id", // الحقل الذي يربط الوثيقتين في مجموعة TypesOfPlaces
+        foreignField: "type", // الحقل الذي يربط الوثيقتين في مجموعة Activity
+        as: "activities", // اسم الحقل الذي سيتم تخزين الأنشطة فيه بعد الدمج
+      },
     },
     {
       $unwind: {
         path: "$activities",
-        preserveNullAndEmptyArrays: true // السماح بعرض الوثائق التي لا تحتوي على أنشطة
-      }
+        preserveNullAndEmptyArrays: true, // السماح بعرض الوثائق التي لا تحتوي على أنشطة
+      },
     },
     {
       $project: {
@@ -187,34 +187,36 @@ export const getallWithActivity = asyncHandler(async (req, res, next) => {
           $cond: {
             if: { $gt: ["$activities._id", null] }, // التحقق من وجود activity_id
             then: "$activities._id", // إذا كان هناك activity_id، استخدمه كـ _id
-            else: "$_id" // خلاف ذلك، استخدم _id من TypesOfPlaces
-          }
+            else: "$_id", // خلاف ذلك، استخدم _id من TypesOfPlaces
+          },
         },
         name: {
           $cond: {
             if: { $gt: ["$activities", null] }, // التحقق من وجود أنشطة
-            then: lang === 'en' ? "$activities.name_en" : "$activities.name_ar", // استخدام اسم النشاط حسب اللغة
-            else: lang === 'en' ? "$name_en" : "$name_ar" // استخدام اسم المكان حسب اللغة
-          }
-        }
-      }
-    }
+            then: lang === "en" ? "$activities.name_en" : "$activities.name_ar", // استخدام اسم النشاط حسب اللغة
+            else: lang === "en" ? "$name_en" : "$name_ar", // استخدام اسم المكان حسب اللغة
+          },
+        },
+      },
+    },
   ]);
 
   return res.status(200).json({
     success: true,
-    results: result
+    results: result,
   });
 });
 
-
-
 export const getTypesAndActivities = async (req, res) => {
-  const { categoryId } = req.params; 
-  const language = req.headers['accept-language'] === 'ar' ? 'ar' : 'en'; 
+  const { categoryId } = req.params;
+  const language = req.headers["accept-language"] === "ar" ? "ar" : "en";
 
-  const types = await typesOfPlacesModel.find({ categoryId, isTool: true }).lean();
-  const activities = await activityModel.find({ type: { $in: types.map(type => type._id) } }).lean();
+  const types = await typesOfPlacesModel
+    .find({ categoryId, isTool: true })
+    .lean();
+  const activities = await activityModel
+    .find({ type: { $in: types.map((type) => type._id) } })
+    .lean();
 
   const activitiesMap = activities.reduce((acc, activity) => {
     const typeId = activity.type.toString();
@@ -223,24 +225,27 @@ export const getTypesAndActivities = async (req, res) => {
     }
     acc[typeId].push({
       id: activity._id,
-      name: activity[`name_${language}`], 
+      name: activity[`name_${language}`],
     });
     return acc;
   }, {});
 
-  const results = types.map((type) => {
-    const associatedActivities = activitiesMap[type._id.toString()];
-    if (associatedActivities && associatedActivities.length > 0) {
-      return associatedActivities; 
-    }
-    return {
-      id: type._id,
-      name: type[`name_${language}`], 
-    };
-  }).flat();
+  const results = types
+    .map((type) => {
+      const associatedActivities = activitiesMap[type._id.toString()];
+      if (associatedActivities && associatedActivities.length > 0) {
+        return associatedActivities;
+      }
+      return {
+        id: type._id,
+        name: type[`name_${language}`],
+      };
+    })
+    .flat();
 
   // Custom sort logic based on language
-  const customSortOrder = language === 'ar' ? ["يخت", "مراكب"] : ["Yacht", "Boats"];
+  const customSortOrder =
+    language === "ar" ? ["يخت", "مراكب"] : ["Yacht", "Boats"];
 
   results.sort((a, b) => {
     const aIndex = customSortOrder.indexOf(a.name);
