@@ -19,7 +19,7 @@ const typesOfPlacesSchema = new Schema(
       required: true,
       ref: "Category",
     },
-   /* image: {
+    /* image: {
       id: {
         type: String,
       },
@@ -27,12 +27,12 @@ const typesOfPlacesSchema = new Schema(
         type: String,
       },
     },*/
-    isTool:{
-      type:Boolean,
-      required:true,
-    }
+    isTool: {
+      type: Boolean,
+      required: true,
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const typesOfPlacesModel =
