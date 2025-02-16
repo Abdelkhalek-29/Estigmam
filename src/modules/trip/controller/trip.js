@@ -252,10 +252,7 @@ export const BookedTrip = asyncHandler(async (req, res) => {
     await userModel.findByIdAndUpdate(userId, {
       $inc: {
         "wallet.balance": -totalCost,
-        "wallet.total_Expenses": totalCost,
-      },
-      $push: {
-        Booked: { tripId, BookedTicket },
+        "wallet.TotalWithdraw": totalCost,
       },
     });
   } else {
@@ -306,11 +303,6 @@ export const BookedTrip = asyncHandler(async (req, res) => {
       tripId: trip._id,
       reason: trip.tripTitle,
       orderId,
-    });
-    await userModel.findByIdAndUpdate(userId, {
-      $push: {
-        Booked: { tripId, BookedTicket },
-      },
     });
 
     return res.status(200).json({
@@ -1234,11 +1226,57 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
   const { type, city } = req.query;
   const currentDate = new Date();
 
-  // Fetch the user with booked trips
-  // Fetch the user with booked trips
-  const user = await userModel.findById(userId).populate({
-    path: "Booked.tripId",
-    populate: [
+  let matchQuery = {};
+  const typeIndex = parseInt(type, 10);
+
+  const typeOptions = [
+    {
+      startDate: { $lte: currentDate },
+      endDate: { $gte: currentDate },
+      status: "current",
+    },
+    {
+      startDate: { $gt: currentDate },
+      status: "upComing",
+    },
+    {
+      status: "completed",
+    },
+    {
+      status: "pending",
+      userId,
+      isCustomized: true,
+    },
+    {
+      status: "cancelled",
+      userId,
+      isCustomized: true,
+    },
+    {
+      status: "rejected",
+      userId,
+      isCustomized: true,
+    },
+  ];
+
+  if (
+    type !== undefined &&
+    !isNaN(typeIndex) &&
+    typeIndex >= 0 &&
+    typeIndex < typeOptions.length
+  ) {
+    matchQuery = typeOptions[typeIndex];
+  }
+
+  if (city) {
+    matchQuery.city = city;
+  }
+
+  let trips = [];
+
+  if (matchQuery.status === "cancelled" || "pending") {
+    // Directly fetch cancelled trips
+    trips = await tripModel.find(matchQuery).populate([
       { path: "typeOfPlace", select: "name_ar name_en" },
       { path: "category", select: "name_ar name_en" },
       { path: "bedType", select: "name_ar name_en image" },
@@ -1249,23 +1287,20 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
       },
       { path: "cityId", select: "name" },
       { path: "activity", select: "name_ar name_en" },
-    ],
-  });
+    ]);
+  } else {
+    const user = await userModel.findById(userId).populate({
+      path: "Booked.tripId",
+      match: matchQuery,
+    });
 
-  if (!user) {
-    return next(new Error("User not found", { status: 404 }));
-  }
+    if (!user) {
+      return next(new Error("User not found", { status: 404 }));
+    }
 
-  // Extract booked trips
-  let bookedTrips = user.Booked.map((b) => b.tripId).filter(Boolean);
+    const tripIds = user.Booked.map((trip) => trip.tripId?._id).filter(Boolean);
 
-  // Fetch trips that were created by the user but not booked (pending, cancelled, rejected)
-  const userCreatedTrips = await tripModel
-    .find({
-      userId,
-      status: { $in: ["pending", "cancelled", "rejected"] },
-    })
-    .populate([
+    trips = await tripModel.find({ _id: { $in: tripIds } }).populate([
       { path: "typeOfPlace", select: "name_ar name_en" },
       { path: "category", select: "name_ar name_en" },
       { path: "bedType", select: "name_ar name_en image" },
@@ -1278,103 +1313,66 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
       { path: "activity", select: "name_ar name_en" },
     ]);
 
-  // Merge both lists
-  bookedTrips = [...bookedTrips, ...userCreatedTrips];
+    trips = await Promise.all(
+      trips.map(async (trip) => {
+        const bookedTrip = user.Booked.find((b) =>
+          b.tripId?._id.equals(trip._id)
+        );
+        const bookedTickets = bookedTrip ? bookedTrip.BookedTicket : 0;
 
-  // Apply city filter if provided
-  if (city) {
-    bookedTrips = bookedTrips.filter((trip) => trip.cityId.name === city);
+        const isFavourite = user.Likes.includes(trip._id);
+
+        let commentsCount = 0;
+        if (trip.status === "pending") {
+          commentsCount = await ratingModel.countDocuments({
+            tripId: trip._id,
+          });
+        }
+
+        const categoryName = trip.category ? trip.category[nameField] : "";
+        const typeOfPlaceName = trip.typeOfPlace
+          ? trip.typeOfPlace[nameField]
+          : "";
+        const activityName = trip.activity ? trip.activity[nameField] : "";
+        const additionDetails = trip.addition.map((addition) => ({
+          _id: addition._id,
+          name: addition[nameField] || "",
+          image: addition.Image || "",
+        }));
+        const bedTypeDetails = trip.bedType.map((bedType) => ({
+          _id: bedType._id,
+          name: bedType[nameField] || "",
+          image: bedType.image || "",
+        }));
+
+        return {
+          ...trip.toObject(),
+          isFavourite,
+          bookedTickets,
+          category: {
+            _id: trip.category?._id,
+            name: categoryName,
+          },
+          typeOfPlace: {
+            _id: trip.typeOfPlace?._id,
+            name: typeOfPlaceName,
+          },
+          activity: {
+            _id: trip.activity?._id || "",
+            name: activityName,
+          },
+          bedType: bedTypeDetails,
+          addition: additionDetails,
+          ...(trip.status === "pending" && { commentsCount }),
+        };
+      })
+    );
   }
 
-  // Define status filters
-  const typeIndex = parseInt(type, 10);
-  const typeOptions = [
-    (trip) => trip.startDate <= currentDate && trip.endDate >= currentDate, // Current
-    (trip) => trip.startDate > currentDate, // Upcoming
-    (trip) => trip.status === "completed", // Completed
-    (trip) => trip.status === "pending" && trip.isCustomized,
-    (trip) => trip.status === "cancelled" && trip.isCustomized,
-    (trip) => trip.status === "rejected" && trip.isCustomized,
-  ];
-
-  if (
-    type !== undefined &&
-    !isNaN(typeIndex) &&
-    typeIndex >= 0 &&
-    typeIndex < typeOptions.length
-  ) {
-    bookedTrips = bookedTrips.filter(typeOptions[typeIndex]);
-  }
-
-  // Process trips
-  const trips = bookedTrips.map((trip) => {
-    const bookedTrip = user.Booked.find((b) => b.tripId?._id.equals(trip._id));
-    const bookedTickets = bookedTrip ? bookedTrip.BookedTicket : 0;
-    const isFavourite = user.Likes.includes(trip._id);
-
-    return {
-      tripDuration: trip.tripDuration,
-      startLocation: trip.startLocation,
-      endLocation: trip.endLocation,
-      defaultImage: trip.defaultImage,
-      _id: trip._id,
-      startDate: trip.startDate,
-      endDate: trip.endDate,
-      peopleNumber: trip.peopleNumber,
-      numberOfPeopleAvailable: trip.numberOfPeopleAvailable,
-      cityId: trip.cityId,
-      berh: trip.berh,
-      tripTitle: trip.tripTitle,
-      priceMember: trip.priceMember,
-      addition: trip.addition.map((a) => ({
-        _id: a._id,
-        name: a[nameField] || "",
-      })),
-      bedType: trip.bedType.map((b) => ({
-        _id: b._id,
-        name: b[nameField] || "",
-        image: b.image || "",
-      })),
-      offer: trip.offer,
-      priceAfterOffer: trip.priceAfterOffer,
-      category: {
-        _id: trip.category?._id,
-        name: trip.category ? trip.category[nameField] : "",
-      },
-      isCustomized: trip.isCustomized,
-      typeOfPlace: {
-        _id: trip.typeOfPlace?._id,
-        name: trip.typeOfPlace ? trip.typeOfPlace[nameField] : "",
-      },
-      activity: {
-        _id: trip.activity?._id || "",
-        name: trip.activity ? trip.activity[nameField] : "",
-      },
-      city: trip.cityId.name,
-      tripCode: trip.tripCode,
-      distance: trip.distance,
-      status: trip.status,
-      totalEarnings: trip.totalEarnings,
-      isFavourite,
-      description: trip.description,
-      descriptionAddress: trip.descriptionAddress,
-      isLeaderCreate: trip.isLeaderCreate,
-      startLocationDetails: trip.startLocationDetails,
-      endLocationDetails: trip.endLocationDetails,
-      subImages: trip.subImages,
-      createdBy: trip.createdBy,
-      tripLeaderId: trip.tripLeaderId,
-      equipmentId: trip.equipmentId,
-      createdAt: trip.createdAt,
-      updatedAt: trip.updatedAt,
-      __v: trip.__v,
-      finalPrice: trip.priceAfterOffer.toFixed(2),
-      id: trip._id,
-      bookedTickets,
-    };
+  res.status(200).json({
+    success: true,
+    trips,
   });
-
-  res.status(200).json({ success: true, trips });
 });
 
 export const cancel = asyncHandler(async (req, res, next) => {
