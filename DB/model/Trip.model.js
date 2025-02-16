@@ -185,7 +185,7 @@ const tripSchema = new Schema(
     strictQuery: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
-  }
+  },
 );
 
 /*tripSchema.virtual("averageRating").get(function () {
@@ -210,7 +210,7 @@ tripSchema.methods.recalculateAverageRating = async function () {
 tripSchema.virtual("finalPrice").get(function () {
   if (this.priceMember) {
     return Number.parseFloat(
-      this.priceMember - (this.priceMember * this.offer || 0) / 100
+      this.priceMember - (this.priceMember * this.offer || 0) / 100,
     ).toFixed(2);
   }
 });
@@ -221,10 +221,10 @@ tripSchema.pre("save", function (next) {
 
     const days = Math.floor(durationInMillis / (1000 * 60 * 60 * 24));
     const hours = Math.floor(
-      (durationInMillis % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+      (durationInMillis % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
     );
     const minutes = Math.floor(
-      (durationInMillis % (1000 * 60 * 60)) / (1000 * 60)
+      (durationInMillis % (1000 * 60 * 60)) / (1000 * 60),
     );
 
     this.tripDuration = {
