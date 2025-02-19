@@ -1278,25 +1278,57 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
 
   let trips = [];
 
-  if (matchQuery.status === "cancelled" || "pending") {
-    // Directly fetch cancelled trips
-    trips = await tripModel.find(matchQuery).populate([
-      { path: "typeOfPlace", select: "name_ar name_en" },
-      { path: "category", select: "name_ar name_en" },
-      { path: "bedType", select: "name_ar name_en image" },
-      { path: "addition", select: "name_ar name_en Image" },
-      {
-        path: "tripLeaderId",
-        select: "profileImage _id name tripsCounter averageRating",
-      },
-      { path: "cityId", select: "name" },
-      { path: "activity", select: "name_ar name_en" },
-    ]);
+  if (matchQuery.status === "cancelled" || matchQuery.status === "pending") {
+    // Directly fetch cancelled and pending trips
+    trips = await tripModel
+      .find(matchQuery)
+      .populate([
+        { path: "typeOfPlace", select: "name_ar name_en" },
+        { path: "category", select: "name_ar name_en" },
+        { path: "bedType", select: "name_ar name_en image" },
+        { path: "addition", select: "name_ar name_en Image" },
+        {
+          path: "tripLeaderId",
+          select: "profileImage _id name tripsCounter averageRating",
+        },
+        { path: "cityId", select: "name" },
+        { path: "activity", select: "name_ar name_en" },
+      ])
+      .lean();
+
+    // Format the response properly
+    trips = trips.map((trip) => ({
+      ...trip,
+      category: trip.category
+        ? { _id: trip.category._id, name: trip.category[nameField] }
+        : null,
+      typeOfPlace: trip.typeOfPlace
+        ? { _id: trip.typeOfPlace._id, name: trip.typeOfPlace[nameField] }
+        : null,
+      activity: trip.activity
+        ? { _id: trip.activity._id, name: trip.activity[nameField] }
+        : null,
+      addition:
+        trip.addition?.map((addition) => ({
+          _id: addition._id,
+          name: addition[nameField] || "",
+          image: addition.Image || "",
+        })) || [],
+      bedType:
+        trip.bedType?.map((bedType) => ({
+          _id: bedType._id,
+          name: bedType[nameField] || "",
+          image: bedType.image || "",
+        })) || [],
+    }));
   } else {
-    const user = await userModel.findById(userId).populate({
-      path: "Booked.tripId",
-      match: matchQuery,
-    });
+    const user = await userModel
+      .findById(userId)
+      .populate({
+        path: "Booked.tripId",
+        match: matchQuery,
+      })
+      .lean();
 
     if (!user) {
       return next(new Error("User not found", { status: 404 }));
@@ -1304,18 +1336,21 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
 
     const tripIds = user.Booked.map((trip) => trip.tripId?._id).filter(Boolean);
 
-    trips = await tripModel.find({ _id: { $in: tripIds } }).populate([
-      { path: "typeOfPlace", select: "name_ar name_en" },
-      { path: "category", select: "name_ar name_en" },
-      { path: "bedType", select: "name_ar name_en image" },
-      { path: "addition", select: "name_ar name_en Image" },
-      {
-        path: "tripLeaderId",
-        select: "profileImage _id name tripsCounter averageRating",
-      },
-      { path: "cityId", select: "name" },
-      { path: "activity", select: "name_ar name_en" },
-    ]);
+    trips = await tripModel
+      .find({ _id: { $in: tripIds } })
+      .populate([
+        { path: "typeOfPlace", select: "name_ar name_en" },
+        { path: "category", select: "name_ar name_en" },
+        { path: "bedType", select: "name_ar name_en image" },
+        { path: "addition", select: "name_ar name_en Image" },
+        {
+          path: "tripLeaderId",
+          select: "profileImage _id name tripsCounter averageRating",
+        },
+        { path: "cityId", select: "name" },
+        { path: "activity", select: "name_ar name_en" },
+      ])
+      .lean();
 
     trips = await Promise.all(
       trips.map(async (trip) => {
@@ -1333,40 +1368,31 @@ export const getScheduleUserTrips = asyncHandler(async (req, res, next) => {
           });
         }
 
-        const categoryName = trip.category ? trip.category[nameField] : "";
-        const typeOfPlaceName = trip.typeOfPlace
-          ? trip.typeOfPlace[nameField]
-          : "";
-        const activityName = trip.activity ? trip.activity[nameField] : "";
-        const additionDetails = trip.addition.map((addition) => ({
-          _id: addition._id,
-          name: addition[nameField] || "",
-          image: addition.Image || "",
-        }));
-        const bedTypeDetails = trip.bedType.map((bedType) => ({
-          _id: bedType._id,
-          name: bedType[nameField] || "",
-          image: bedType.image || "",
-        }));
-
         return {
-          ...trip.toObject(),
+          ...trip,
           isFavourite,
           bookedTickets,
-          category: {
-            _id: trip.category?._id,
-            name: categoryName,
-          },
-          typeOfPlace: {
-            _id: trip.typeOfPlace?._id,
-            name: typeOfPlaceName,
-          },
-          activity: {
-            _id: trip.activity?._id || "",
-            name: activityName,
-          },
-          bedType: bedTypeDetails,
-          addition: additionDetails,
+          category: trip.category
+            ? { _id: trip.category._id, name: trip.category[nameField] }
+            : null,
+          typeOfPlace: trip.typeOfPlace
+            ? { _id: trip.typeOfPlace._id, name: trip.typeOfPlace[nameField] }
+            : null,
+          activity: trip.activity
+            ? { _id: trip.activity._id, name: trip.activity[nameField] }
+            : null,
+          bedType:
+            trip.bedType?.map((bedType) => ({
+              _id: bedType._id,
+              name: bedType[nameField] || "",
+              image: bedType.image || "",
+            })) || [],
+          addition:
+            trip.addition?.map((addition) => ({
+              _id: addition._id,
+              name: addition[nameField] || "",
+              image: addition.Image || "",
+            })) || [],
           ...(trip.status === "pending" && { commentsCount }),
         };
       })
