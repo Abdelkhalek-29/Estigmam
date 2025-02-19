@@ -215,17 +215,16 @@ export const BookedTrip = asyncHandler(async (req, res) => {
   const { BookedTicket, paymentType } = req.body;
   const userId = req.user._id;
 
+  // Validate trip and user
   const trip = await tripModel.findById(tripId);
-  if (!trip) {
+  if (!trip)
     return res.status(400).json({ success: false, message: "Trip not found" });
-  }
 
   const user = await userModel.findById(userId);
-  if (!user) {
+  if (!user)
     return res.status(400).json({ success: false, message: "User not found" });
-  }
 
-  // Validate booking details
+  // Validate ticket count
   if (!BookedTicket || isNaN(BookedTicket) || BookedTicket <= 0) {
     return res
       .status(400)
@@ -240,7 +239,7 @@ export const BookedTrip = asyncHandler(async (req, res) => {
 
   const totalCost = trip.priceAfterOffer * BookedTicket;
 
-  // Handle wallet payment
+  // Handle Wallet Payment
   if (paymentType === "Wallet") {
     if (totalCost > user.wallet.balance) {
       return res.status(400).json({
@@ -256,7 +255,7 @@ export const BookedTrip = asyncHandler(async (req, res) => {
       },
     });
   } else {
-    // Handle external payment
+    // Handle External Payment
     let paymentResponse;
     switch (paymentType) {
       case "Card":
@@ -312,13 +311,10 @@ export const BookedTrip = asyncHandler(async (req, res) => {
       transactionCode: transaction.orderId,
     });
   }
-  const invoiceDir = path.resolve("invoices");
-  if (!fs.existsSync(invoiceDir)) {
-    fs.mkdirSync(invoiceDir, { recursive: true });
-  }
 
+  // Generate Invoice
   const orderId = randomstring.generate({ length: 7, charset: "numeric" });
-  const invoicePath = path.resolve(invoiceDir, `${orderId}.pdf`);
+  const invoicePath = `/tmp/${orderId}.pdf`; // Use temporary directory
 
   const invoiceData = {
     total: totalCost.toString(),
@@ -342,24 +338,28 @@ export const BookedTrip = asyncHandler(async (req, res) => {
 
   setTimeout(async () => {
     try {
+      // Ensure the invoice file is valid
       const stats = await fs.promises.stat(invoicePath);
       if (stats.size === 0) {
-        return res.status(500).json({
-          success: false,
-          message: "Generated invoice is empty",
-        });
+        return res
+          .status(500)
+          .json({ success: false, message: "Generated invoice is empty" });
       }
     } catch (err) {
       return res
         .status(500)
         .json({ success: false, message: "Error checking invoice file" });
     }
+
     try {
+      // Upload invoice to Cloudinary
       const cloudinaryResponse = await cloudinary.uploader.upload(invoicePath, {
         resource_type: "raw",
         folder: "invoices",
       });
-      const invoice = {
+
+      // Save invoice details to DB
+      const invoiceData = await invoceModel.create({
         invoiceNumber: orderId,
         userId,
         tripId: trip._id,
@@ -367,11 +367,14 @@ export const BookedTrip = asyncHandler(async (req, res) => {
         ticketPrice: trip.priceAfterOffer,
         amount: totalCost,
         invoicePath: cloudinaryResponse.secure_url,
-      };
+      });
 
-      const invoiceDate = await invoceModel.create(invoice);
+      // Delete local file after successful upload
+      if (cloudinaryResponse.secure_url) {
+        await fs.promises.unlink(invoicePath);
+      }
 
-      await fs.promises.unlink(invoicePath);
+      // Handle Chat Group Creation
       let chatGroup = await GroupChat.findOne({ tripId });
       if (!chatGroup) {
         chatGroup = await GroupChat.create({
@@ -392,13 +395,14 @@ export const BookedTrip = asyncHandler(async (req, res) => {
         chatGroup.participants.push(userId);
         await chatGroup.save();
       }
+
       return res.status(200).json({
         success: true,
         message: "The trip has been booked successfully",
         transactionCode: orderId,
         tripId: trip._id,
         invoiceUrl: cloudinaryResponse.secure_url,
-        invoiceId: invoiceDate._id,
+        invoiceId: invoiceData._id,
       });
     } catch (err) {
       return res.status(500).json({
