@@ -215,28 +215,36 @@ export const BookedTrip = asyncHandler(async (req, res) => {
   const { BookedTicket, paymentType } = req.body;
   const userId = req.user._id;
 
+  // Validate trip
   const trip = await tripModel.findById(tripId);
-  if (!trip)
+  if (!trip) {
     return res.status(400).json({ success: false, message: "Trip not found" });
+  }
 
+  // Validate user
   const user = await userModel.findById(userId);
-  if (!user)
+  if (!user) {
     return res.status(400).json({ success: false, message: "User not found" });
+  }
 
+  // Validate booked tickets
   if (!BookedTicket || isNaN(BookedTicket) || BookedTicket <= 0) {
     return res
       .status(400)
       .json({ success: false, message: "Invalid number of tickets" });
   }
 
+  // Validate trip price
   if (!trip.priceAfterOffer || isNaN(trip.priceAfterOffer)) {
     return res
       .status(400)
       .json({ success: false, message: "Invalid trip price" });
   }
 
+  // Calculate total cost
   const totalCost = trip.priceAfterOffer * BookedTicket;
 
+  // Handle wallet payment
   if (paymentType === "Wallet") {
     if (totalCost > user.wallet.balance) {
       return res.status(400).json({
@@ -245,6 +253,7 @@ export const BookedTrip = asyncHandler(async (req, res) => {
       });
     }
 
+    // Deduct from user's wallet
     await userModel.findByIdAndUpdate(userId, {
       $inc: {
         "wallet.balance": -totalCost,
@@ -252,6 +261,7 @@ export const BookedTrip = asyncHandler(async (req, res) => {
       },
     });
   } else {
+    // Handle other payment types (Card, PayPal, Apple Pay, Google Pay)
     let paymentResponse;
     switch (paymentType) {
       case "Card":
@@ -280,14 +290,16 @@ export const BookedTrip = asyncHandler(async (req, res) => {
           .json({ success: false, message: "Invalid payment type" });
     }
 
+    // Validate payment response
     if (!paymentResponse?.result?.checkoutData?.postUrl) {
       return res
         .status(400)
         .json({ success: false, message: "Failed to initiate payment" });
     }
 
+    // Create transaction record
     const orderId = randomstring.generate({ length: 7, charset: "numeric" });
-    const transaction = await transactionModel.create({
+    await transactionModel.create({
       actorId: userId,
       actorType: "User",
       amount: totalCost,
@@ -304,13 +316,13 @@ export const BookedTrip = asyncHandler(async (req, res) => {
       success: true,
       message: "Redirect to payment",
       checkoutUrl: paymentResponse.result.checkoutData.postUrl,
-      transactionCode: transaction.orderId,
+      transactionCode: orderId,
     });
   }
 
-  // ✅ FIXED: Use `/tmp/` instead of `/var/task/`
+  // Generate invoice
   const orderId = randomstring.generate({ length: 7, charset: "numeric" });
-  const invoicePath = `/tmp/${orderId}.pdf`; // ✅ AWS Lambda Compatible Path
+  const invoicePath = `/tmp/${orderId}.pdf`; // Use `/tmp` for AWS Lambda compatibility
 
   const invoiceData = {
     total: totalCost.toString(),
@@ -332,6 +344,7 @@ export const BookedTrip = asyncHandler(async (req, res) => {
       .json({ success: false, message: "Failed to generate invoice" });
   }
 
+  // Verify invoice file
   setTimeout(async () => {
     try {
       const stats = await fs.promises.stat(invoicePath);
@@ -346,12 +359,14 @@ export const BookedTrip = asyncHandler(async (req, res) => {
         .json({ success: false, message: "Error checking invoice file" });
     }
 
+    // Upload invoice to Cloudinary
     try {
       const cloudinaryResponse = await cloudinary.uploader.upload(invoicePath, {
         resource_type: "raw",
         folder: "invoices",
       });
 
+      // Save invoice data to database
       const invoiceData = await invoceModel.create({
         invoiceNumber: orderId,
         userId,
@@ -362,11 +377,12 @@ export const BookedTrip = asyncHandler(async (req, res) => {
         invoicePath: cloudinaryResponse.secure_url,
       });
 
-      // ✅ Delete local file after successful upload
+      // Delete local invoice file after successful upload
       if (cloudinaryResponse.secure_url) {
         await fs.promises.unlink(invoicePath);
       }
 
+      // Create or update group chat for the trip
       let chatGroup = await GroupChat.findOne({ tripId });
       if (!chatGroup) {
         chatGroup = await GroupChat.create({
@@ -384,6 +400,7 @@ export const BookedTrip = asyncHandler(async (req, res) => {
         await chatGroup.save();
       }
 
+      // Return success response
       return res.status(200).json({
         success: true,
         message: "The trip has been booked successfully",
@@ -398,7 +415,7 @@ export const BookedTrip = asyncHandler(async (req, res) => {
         message: "Failed to upload invoice to Cloudinary",
       });
     }
-  }, 1000);
+  }, 1000); // Delay to ensure file is written before upload
 });
 
 export const handleWebhook = asyncHandler(async (req, res) => {
