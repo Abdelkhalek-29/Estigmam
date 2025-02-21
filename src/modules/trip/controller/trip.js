@@ -418,16 +418,6 @@ export const BookedTrip = asyncHandler(async (req, res) => {
   }, 1000); // Delay to ensure file is written before upload
 });
 
-import asyncHandler from "express-async-handler";
-import transactionModel from "../models/transactionModel.js";
-import tripModel from "../models/tripModel.js";
-import userModel from "../models/userModel.js";
-import GroupChat from "../models/groupChatModel.js";
-import crypto from "crypto";
-
-// Webhook secret key (provided by your payment gateway)
-const WEBHOOK_SECRET = "your_webhook_secret_key";
-
 export const handleWebhook = asyncHandler(async (req, res) => {
   try {
     console.log("Webhook payload received:", req.body);
