@@ -312,9 +312,9 @@ export const BookedTrip = asyncHandler(async (req, res) => {
     });
   }
 
-  // Generate Invoice
+  // Generate Invoice in /tmp/
   const orderId = randomstring.generate({ length: 7, charset: "numeric" });
-  const invoicePath = `/tmp/${orderId}.pdf`; // Use temporary directory
+  const invoicePath = `/tmp/${orderId}.pdf`; // ✅ FIXED: Using /tmp/ instead of /var/task/
 
   const invoiceData = {
     total: totalCost.toString(),
@@ -338,7 +338,7 @@ export const BookedTrip = asyncHandler(async (req, res) => {
 
   setTimeout(async () => {
     try {
-      // Ensure the invoice file is valid
+      // Ensure the invoice file exists and is valid
       const stats = await fs.promises.stat(invoicePath);
       if (stats.size === 0) {
         return res
@@ -387,11 +387,7 @@ export const BookedTrip = asyncHandler(async (req, res) => {
             seen: false,
           },
         });
-      } else if (
-        !chatGroup.participants.some(
-          (participant) => participant.toString() === userId.toString()
-        )
-      ) {
+      } else if (!chatGroup.participants.includes(userId.toString())) {
         chatGroup.participants.push(userId);
         await chatGroup.save();
       }
