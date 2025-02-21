@@ -419,76 +419,113 @@ export const BookedTrip = asyncHandler(async (req, res) => {
 });
 
 export const handleWebhook = asyncHandler(async (req, res) => {
-  const signature = req.headers["x-payment-signature"]; // Replace with the actual header key used by your payment gateway
+  try {
+    console.log("Webhook payload received:", req.body);
 
-  // Verify the webhook signature
-  const payload = JSON.stringify(req.body);
-  const computedSignature = crypto
-    .createHmac("sha256", WEBHOOK_SECRET)
-    .update(payload)
-    .digest("hex");
-
-  if (signature !== computedSignature) {
-    return res
-      .status(401)
-      .json({ success: false, message: "Invalid signature" });
-  }
-
-  // Extract event data from the payload
-  const { eventType, data } = req.body;
-
-  // Handle payment success event
-  if (eventType === "payment_success") {
-    const { transactionId, orderId, amount, status } = data;
-
-    // Find the transaction in the database
-    const transaction = await transactionModel.findOne({ orderId });
-    if (!transaction) {
+    // Extract the signature from the headers
+    const signature = req.headers["x-payment-signature"]; // Replace with the actual header key used by your payment gateway
+    if (!signature) {
+      console.error("Missing signature in headers");
       return res
-        .status(404)
-        .json({ success: false, message: "Transaction not found" });
+        .status(400)
+        .json({ success: false, message: "Missing signature" });
     }
 
-    // Update the transaction status
-    transaction.status = "completed";
-    await transaction.save();
+    // Verify the webhook signature
+    const payload = JSON.stringify(req.body);
+    const computedSignature = crypto
+      .createHmac("sha256", WEBHOOK_SECRET)
+      .update(payload)
+      .digest("hex");
 
-    // Find the user and trip associated with the transaction
-    const user = await userModel.findById(transaction.actorId);
-    const trip = await tripModel.findById(transaction.tripId);
-
-    if (!user || !trip) {
+    if (signature !== computedSignature) {
+      console.error("Invalid signature");
       return res
-        .status(404)
-        .json({ success: false, message: "User or trip not found" });
+        .status(401)
+        .json({ success: false, message: "Invalid signature" });
     }
 
-    // Create or update group chat for the trip
-    let chatGroup = await GroupChat.findOne({ tripId: trip._id });
-    if (!chatGroup) {
-      chatGroup = await GroupChat.create({
-        tripId: trip._id,
-        groupName: `${trip.tripTitle} Chat`,
-        participants: [user._id],
-        lastMessage: {
-          text: "Welcome to the trip!",
-          senderId: user._id,
-          seen: false,
-        },
-      });
-    } else if (!chatGroup.participants.includes(user._id.toString())) {
-      chatGroup.participants.push(user._id);
-      await chatGroup.save();
+    // Extract event data from the payload
+    const { eventType, data } = req.body;
+    if (!eventType || !data) {
+      console.error("Invalid payload: Missing eventType or data");
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid payload" });
     }
 
-    // Return success response
+    console.log("Event type:", eventType);
+
+    // Handle payment success event
+    if (eventType === "payment_success") {
+      const { transactionId, orderId, amount, status } = data;
+      if (!transactionId || !orderId || !amount || !status) {
+        console.error("Invalid payload: Missing required fields");
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid payload" });
+      }
+
+      // Find the transaction in the database
+      const transaction = await transactionModel.findOne({ orderId });
+      if (!transaction) {
+        console.error("Transaction not found for orderId:", orderId);
+        return res
+          .status(404)
+          .json({ success: false, message: "Transaction not found" });
+      }
+
+      // Update the transaction status
+      transaction.status = "completed";
+      await transaction.save();
+      console.log("Transaction updated:", transaction);
+
+      // Find the user and trip associated with the transaction
+      const user = await userModel.findById(transaction.actorId);
+      const trip = await tripModel.findById(transaction.tripId);
+
+      if (!user || !trip) {
+        console.error("User or trip not found");
+        return res
+          .status(404)
+          .json({ success: false, message: "User or trip not found" });
+      }
+
+      // Create or update group chat for the trip
+      let chatGroup = await GroupChat.findOne({ tripId: trip._id });
+      if (!chatGroup) {
+        chatGroup = await GroupChat.create({
+          tripId: trip._id,
+          groupName: `${trip.tripTitle} Chat`,
+          participants: [user._id],
+          lastMessage: {
+            text: "Welcome to the trip!",
+            senderId: user._id,
+            seen: false,
+          },
+        });
+      } else if (!chatGroup.participants.includes(user._id.toString())) {
+        chatGroup.participants.push(user._id);
+        await chatGroup.save();
+      }
+
+      console.log("Group chat updated:", chatGroup);
+
+      // Return success response
+      return res
+        .status(200)
+        .json({ success: true, message: "Payment success processed" });
+    }
+
+    // Handle other event types (e.g., payment_failure, refund_initiated, etc.)
+    console.log("Unhandled event type:", eventType);
+    return res.status(200).json({ success: true, message: "Webhook received" });
+  } catch (err) {
+    console.error("Webhook error:", err);
     return res
-      .status(200)
-      .json({ success: true, message: "Payment success processed" });
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
-
-  // Handle other event types (e.g., payment_failure, refund_initiated, etc.)
-  return res.status(200).json({ success: true, message: "Webhook received" });
 });
 
 export const getInvoice = asyncHandler(async (req, res, next) => {
