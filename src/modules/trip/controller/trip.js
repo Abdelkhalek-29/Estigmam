@@ -431,11 +431,17 @@ export const handleWebhook = asyncHandler(async (req, res) => {
         .json({ success: false, message: "Missing signature" });
     }
 
+    // Log the payload and signature for debugging
+    console.log("Payload:", JSON.stringify(payload));
+    console.log("Received Signature:", signature);
+
     // Verify the webhook signature
     const computedSignature = crypto
       .createHmac("sha256", WEBHOOK_SECRET)
       .update(JSON.stringify(payload)) // Use the payload without the signature
       .digest("base64");
+
+    console.log("Computed Signature:", computedSignature);
 
     if (signature !== computedSignature) {
       console.error("Invalid signature");
