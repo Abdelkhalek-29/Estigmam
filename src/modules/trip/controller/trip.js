@@ -215,7 +215,6 @@ export const BookedTrip = asyncHandler(async (req, res) => {
   const { BookedTicket, paymentType } = req.body;
   const userId = req.user._id;
 
-  // Validate trip and user
   const trip = await tripModel.findById(tripId);
   if (!trip)
     return res.status(400).json({ success: false, message: "Trip not found" });
@@ -224,7 +223,6 @@ export const BookedTrip = asyncHandler(async (req, res) => {
   if (!user)
     return res.status(400).json({ success: false, message: "User not found" });
 
-  // Validate ticket count
   if (!BookedTicket || isNaN(BookedTicket) || BookedTicket <= 0) {
     return res
       .status(400)
@@ -239,7 +237,6 @@ export const BookedTrip = asyncHandler(async (req, res) => {
 
   const totalCost = trip.priceAfterOffer * BookedTicket;
 
-  // Handle Wallet Payment
   if (paymentType === "Wallet") {
     if (totalCost > user.wallet.balance) {
       return res.status(400).json({
@@ -255,7 +252,6 @@ export const BookedTrip = asyncHandler(async (req, res) => {
       },
     });
   } else {
-    // Handle External Payment
     let paymentResponse;
     switch (paymentType) {
       case "Card":
@@ -312,9 +308,9 @@ export const BookedTrip = asyncHandler(async (req, res) => {
     });
   }
 
-  // Generate Invoice in /tmp/
+  // ✅ FIXED: Use `/tmp/` instead of `/var/task/`
   const orderId = randomstring.generate({ length: 7, charset: "numeric" });
-  const invoicePath = `/tmp/${orderId}.pdf`; // ✅ FIXED: Using /tmp/ instead of /var/task/
+  const invoicePath = `/tmp/${orderId}.pdf`; // ✅ AWS Lambda Compatible Path
 
   const invoiceData = {
     total: totalCost.toString(),
@@ -338,7 +334,6 @@ export const BookedTrip = asyncHandler(async (req, res) => {
 
   setTimeout(async () => {
     try {
-      // Ensure the invoice file exists and is valid
       const stats = await fs.promises.stat(invoicePath);
       if (stats.size === 0) {
         return res
@@ -352,13 +347,11 @@ export const BookedTrip = asyncHandler(async (req, res) => {
     }
 
     try {
-      // Upload invoice to Cloudinary
       const cloudinaryResponse = await cloudinary.uploader.upload(invoicePath, {
         resource_type: "raw",
         folder: "invoices",
       });
 
-      // Save invoice details to DB
       const invoiceData = await invoceModel.create({
         invoiceNumber: orderId,
         userId,
@@ -369,12 +362,11 @@ export const BookedTrip = asyncHandler(async (req, res) => {
         invoicePath: cloudinaryResponse.secure_url,
       });
 
-      // Delete local file after successful upload
+      // ✅ Delete local file after successful upload
       if (cloudinaryResponse.secure_url) {
         await fs.promises.unlink(invoicePath);
       }
 
-      // Handle Chat Group Creation
       let chatGroup = await GroupChat.findOne({ tripId });
       if (!chatGroup) {
         chatGroup = await GroupChat.create({
