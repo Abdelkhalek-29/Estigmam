@@ -421,22 +421,20 @@ export const BookedTrip = asyncHandler(async (req, res) => {
 export const handleWebhook = asyncHandler(async (req, res) => {
   try {
     console.log("Webhook payload received:", req.body);
-    console.log("All headers:", req.headers);
 
-    // Extract the signature from the headers
-    const signature = req.headers["x-noon-signature"];
+    // Extract the signature from the body
+    const { signature, ...payload } = req.body;
     if (!signature) {
-      console.error("Missing signature in headers");
+      console.error("Missing signature in payload");
       return res
         .status(400)
         .json({ success: false, message: "Missing signature" });
     }
 
     // Verify the webhook signature
-    const payload = JSON.stringify(req.body);
     const computedSignature = crypto
       .createHmac("sha256", WEBHOOK_SECRET)
-      .update(payload)
+      .update(JSON.stringify(payload)) // Use the payload without the signature
       .digest("base64");
 
     if (signature !== computedSignature) {
@@ -447,7 +445,7 @@ export const handleWebhook = asyncHandler(async (req, res) => {
     }
 
     // Extract event data
-    const { eventType, eventId, timeStamp, orderId, orderStatus } = req.body;
+    const { eventType, eventId, timeStamp, orderId, orderStatus } = payload;
 
     // Handle the event based on eventType
     switch (eventType) {
