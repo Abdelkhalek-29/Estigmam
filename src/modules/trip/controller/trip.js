@@ -438,7 +438,7 @@ export const handleWebhook = asyncHandler(async (req, res) => {
     // Verify the webhook signature
     const computedSignature = crypto
       .createHmac("sha256", WEBHOOK_SECRET)
-      .update(JSON.stringify(payload)) // Use the payload without the signature
+      .update(JSON.stringify(payload))
       .digest("base64");
 
     console.log("Computed Signature:", computedSignature);
