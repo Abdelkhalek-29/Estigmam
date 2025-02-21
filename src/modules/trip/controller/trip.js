@@ -419,73 +419,41 @@ export const BookedTrip = asyncHandler(async (req, res) => {
 });
 
 export const handleWebhook = asyncHandler(async (req, res) => {
-  try {
-    const signature = req.headers["noon-signature"];
+  const signature = req.headers["x-noon-signature"];
+  const payload = JSON.stringify(req.body);
 
-    if (
-      !verifyNoonSignature(
-        req.rawBody,
-        signature,
-        process.env.NOON_WEBHOOK_SECRET
-      )
-    ) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid signature",
-      });
-    }
+  // Verify the signature
+  const computedSignature = crypto
+    .createHmac("sha256", NOON_WEBHOOK_SECRET)
+    .update(payload)
+    .digest("hex");
 
-    const payload = JSON.parse(req.rawBody);
-    const {
-      order: { reference: orderId },
-      payment: { status: paymentStatus },
-      event,
-    } = payload;
-
-    const transaction = await transactionModel.findOne({ orderId });
-    if (!transaction) {
-      return res.status(404).json({
-        success: false,
-        message: "Transaction not found",
-      });
-    }
-
-    // Handle different payment statuses
-    switch (paymentStatus.toLowerCase()) {
-      case "success":
-      case "authorized":
-        transaction.status = "paid";
-        await transaction.save();
-        break;
-
-      case "failed":
-      case "declined":
-      case "expired":
-        transaction.status = "failed";
-        await transaction.save();
-        break;
-
-      case "voided":
-      case "reversed":
-        transaction.status = "reversed";
-        await transaction.save();
-        break;
-
-      default:
-        console.log(`Unhandled payment status: ${paymentStatus}`);
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Webhook processed successfully",
-    });
-  } catch (error) {
-    console.error("Webhook processing error:", error);
-    return res.status(200).json({
-      success: true,
-      message: "Webhook received",
-    });
+  if (signature !== computedSignature) {
+    return res
+      .status(401)
+      .json({ success: false, message: "Invalid signature" });
   }
+
+  // Process the webhook event
+  const eventType = req.body.eventType;
+  const eventData = req.body.data;
+
+  switch (eventType) {
+    case "payment_success":
+      console.log("Payment succeeded:", eventData);
+      break;
+    case "payment_failure":
+      console.log("Payment failed:", eventData);
+      break;
+    case "refund_initiated":
+      console.log("Refund initiated:", eventData);
+      break;
+    default:
+      console.log("Unhandled event type:", eventType);
+  }
+
+  // Acknowledge receipt of the webhook
+  res.status(200).json({ success: true });
 });
 const verifyNoonSignature = (rawBody, signature, secretKey) => {
   if (!rawBody || !signature || !secretKey) {
