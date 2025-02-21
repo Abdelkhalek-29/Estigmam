@@ -260,6 +260,47 @@ export const BookedTrip = asyncHandler(async (req, res) => {
         "wallet.TotalWithdraw": totalCost,
       },
     });
+
+    // Create transaction record for wallet payment
+    const orderId = randomstring.generate({ length: 7, charset: "numeric" });
+    await transactionModel.create({
+      actorId: userId,
+      actorType: "User",
+      amount: totalCost,
+      type: "Trip",
+      method: paymentType,
+      status: "completed",
+      numberOfTickets: BookedTicket,
+      tripId: trip._id,
+      reason: trip.tripTitle,
+      orderId,
+    });
+
+    // Create or update group chat for the trip
+    let chatGroup = await GroupChat.findOne({ tripId });
+    if (!chatGroup) {
+      chatGroup = await GroupChat.create({
+        tripId,
+        groupName: `${trip.tripTitle} Chat`,
+        participants: [userId],
+        lastMessage: {
+          text: "Welcome to the trip!",
+          senderId: userId,
+          seen: false,
+        },
+      });
+    } else if (!chatGroup.participants.includes(userId.toString())) {
+      chatGroup.participants.push(userId);
+      await chatGroup.save();
+    }
+
+    // Return success response for wallet payment
+    return res.status(200).json({
+      success: true,
+      message: "The trip has been booked successfully",
+      transactionCode: orderId,
+      tripId: trip._id,
+    });
   } else {
     // Handle other payment types (Card, PayPal, Apple Pay, Google Pay)
     let paymentResponse;
@@ -297,7 +338,7 @@ export const BookedTrip = asyncHandler(async (req, res) => {
         .json({ success: false, message: "Failed to initiate payment" });
     }
 
-    // Create transaction record
+    // Create transaction record for external payment
     const orderId = randomstring.generate({ length: 7, charset: "numeric" });
     await transactionModel.create({
       actorId: userId,
@@ -312,6 +353,7 @@ export const BookedTrip = asyncHandler(async (req, res) => {
       orderId,
     });
 
+    // Return success response for external payment
     return res.status(200).json({
       success: true,
       message: "Redirect to payment",
@@ -319,32 +361,6 @@ export const BookedTrip = asyncHandler(async (req, res) => {
       transactionCode: orderId,
     });
   }
-
-  // Create or update group chat for the trip
-  let chatGroup = await GroupChat.findOne({ tripId });
-  if (!chatGroup) {
-    chatGroup = await GroupChat.create({
-      tripId,
-      groupName: `${trip.tripTitle} Chat`,
-      participants: [userId],
-      lastMessage: {
-        text: "Welcome to the trip!",
-        senderId: userId,
-        seen: false,
-      },
-    });
-  } else if (!chatGroup.participants.includes(userId.toString())) {
-    chatGroup.participants.push(userId);
-    await chatGroup.save();
-  }
-
-  // Return success response
-  return res.status(200).json({
-    success: true,
-    message: "The trip has been booked successfully",
-    transactionCode: orderId,
-    tripId: trip._id,
-  });
 });
 
 export const handleWebhook = asyncHandler(async (req, res) => {
