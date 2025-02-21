@@ -417,7 +417,7 @@ export const BookedTrip = asyncHandler(async (req, res) => {
     }
   }, 1000); // Delay to ensure file is written before upload
 });
-
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 export const handleWebhook = asyncHandler(async (req, res) => {
   try {
     console.log("Webhook payload received:", req.body);
