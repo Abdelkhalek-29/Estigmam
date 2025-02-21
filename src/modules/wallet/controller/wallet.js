@@ -160,6 +160,9 @@ export const bankAccount = asyncHandler(async (req, res, next) => {
       message: "User not found",
     });
   }
+
+  const isFirstAccount = user.bank_account.length === 0;
+
   user.bank_account.push({
     account_owner,
     bank_name,
@@ -167,6 +170,7 @@ export const bankAccount = asyncHandler(async (req, res, next) => {
     IBAN,
     local_num,
     bankId,
+    isDefault: isFirstAccount,
   });
 
   await user.save();
@@ -432,5 +436,45 @@ export const setDefault = asyncHandler(async (req, res, next) => {
       bank.isDefault ? "set as default" : "unset as default"
     } successfully!`,
     bank_account: user.bank_account,
+  });
+});
+
+export const deleteBankAccount = asyncHandler(async (req, res, next) => {
+  const { bankId } = req.params;
+  const userId = req.owner?._id || req.tripLeader?._id;
+  const userSchema = req.owner ? OwnerModel : tripLeaderModel;
+
+  const user = await userSchema.findById(userId);
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
+  }
+
+  const bankIndex = user.bank_account.findIndex(
+    (b) => b._id.toString() === bankId
+  );
+
+  if (bankIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      message: "Bank account not found",
+    });
+  }
+
+  const wasDefault = user.bank_account[bankIndex].isDefault;
+
+  user.bank_account.splice(bankIndex, 1);
+
+  if (wasDefault && user.bank_account.length > 0) {
+    user.bank_account[0].isDefault = true;
+  }
+
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Bank account deleted successfully!",
   });
 });

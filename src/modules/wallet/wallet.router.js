@@ -23,4 +23,5 @@ router.post(
 );
 router.get("/getBanks", walletController.getBanks);
 router.patch("/setdefault/:bankId", auth, walletController.setDefault);
+router.delete("/:bankId", auth, walletController.deleteBankAccount);
 export default router;
