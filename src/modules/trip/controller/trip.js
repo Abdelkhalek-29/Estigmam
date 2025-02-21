@@ -421,6 +421,7 @@ export const BookedTrip = asyncHandler(async (req, res) => {
 export const handleWebhook = asyncHandler(async (req, res) => {
   try {
     console.log("Webhook payload received:", req.body);
+    console.log("All headers:", req.headers);
 
     // Extract the signature from the headers
     const signature = req.headers["x-noon-signature"];
