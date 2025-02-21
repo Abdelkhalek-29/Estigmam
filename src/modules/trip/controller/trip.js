@@ -419,12 +419,12 @@ export const BookedTrip = asyncHandler(async (req, res) => {
 });
 
 export const handleWebhook = asyncHandler(async (req, res) => {
-  const signature = req.headers["x-noon-signature"];
-  const payload = JSON.stringify(req.body);
+  const signature = req.headers["x-payment-signature"]; // Replace with the actual header key used by your payment gateway
 
-  // Verify the signature
+  // Verify the webhook signature
+  const payload = JSON.stringify(req.body);
   const computedSignature = crypto
-    .createHmac("sha256", NOON_WEBHOOK_SECRET)
+    .createHmac("sha256", WEBHOOK_SECRET)
     .update(payload)
     .digest("hex");
 
@@ -434,45 +434,63 @@ export const handleWebhook = asyncHandler(async (req, res) => {
       .json({ success: false, message: "Invalid signature" });
   }
 
-  // Process the webhook event
-  const eventType = req.body.eventType;
-  const eventData = req.body.data;
+  // Extract event data from the payload
+  const { eventType, data } = req.body;
 
-  switch (eventType) {
-    case "payment_success":
-      console.log("Payment succeeded:", eventData);
-      break;
-    case "payment_failure":
-      console.log("Payment failed:", eventData);
-      break;
-    case "refund_initiated":
-      console.log("Refund initiated:", eventData);
-      break;
-    default:
-      console.log("Unhandled event type:", eventType);
+  // Handle payment success event
+  if (eventType === "payment_success") {
+    const { transactionId, orderId, amount, status } = data;
+
+    // Find the transaction in the database
+    const transaction = await transactionModel.findOne({ orderId });
+    if (!transaction) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Transaction not found" });
+    }
+
+    // Update the transaction status
+    transaction.status = "completed";
+    await transaction.save();
+
+    // Find the user and trip associated with the transaction
+    const user = await userModel.findById(transaction.actorId);
+    const trip = await tripModel.findById(transaction.tripId);
+
+    if (!user || !trip) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User or trip not found" });
+    }
+
+    // Create or update group chat for the trip
+    let chatGroup = await GroupChat.findOne({ tripId: trip._id });
+    if (!chatGroup) {
+      chatGroup = await GroupChat.create({
+        tripId: trip._id,
+        groupName: `${trip.tripTitle} Chat`,
+        participants: [user._id],
+        lastMessage: {
+          text: "Welcome to the trip!",
+          senderId: user._id,
+          seen: false,
+        },
+      });
+    } else if (!chatGroup.participants.includes(user._id.toString())) {
+      chatGroup.participants.push(user._id);
+      await chatGroup.save();
+    }
+
+    // Return success response
+    return res
+      .status(200)
+      .json({ success: true, message: "Payment success processed" });
   }
 
-  // Acknowledge receipt of the webhook
-  res.status(200).json({ success: true });
+  // Handle other event types (e.g., payment_failure, refund_initiated, etc.)
+  return res.status(200).json({ success: true, message: "Webhook received" });
 });
-const verifyNoonSignature = (rawBody, signature, secretKey) => {
-  if (!rawBody || !signature || !secretKey) {
-    return false;
-  }
 
-  try {
-    const hmac = crypto.createHmac("sha256", secretKey);
-    const calculatedSignature = hmac.update(rawBody).digest("hex");
-
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(calculatedSignature)
-    );
-  } catch (error) {
-    console.error("Signature verification error:", error);
-    return false;
-  }
-};
 export const getInvoice = asyncHandler(async (req, res, next) => {
   const { invoiceId } = req.params;
   const invoice = await invoceModel.findById(invoiceId).select("invoicePath");
